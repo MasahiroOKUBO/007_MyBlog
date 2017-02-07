@@ -2,6 +2,9 @@
 
 {% block content %}
     <a href="/">TOP</a>
+    <a href="/blog" class="main-title">
+        MyLoginBlog
+    </a>
     <h2>
         Login
     </h2>
@@ -20,5 +23,8 @@
             {{ error }}
         </div>
         <input type="submit">
+        <input type="hidden" value="{{ redirectUrl }}">
     </form>
+
+    after redirect to {{ redirectUrl }}
 {% endblock %}

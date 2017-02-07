@@ -16,9 +16,7 @@ from google.appengine.ext import db
  -----------------------
 '''
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
-jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
-                               autoescape = True)
-
+jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir), autoescape=True)
 def jinja_render_str(template, **params):
     t = jinja_env.get_template(template)
     return t.render(params)
@@ -96,9 +94,10 @@ class Post(db.Model):
     created = db.DateTimeProperty(auto_now_add=True)
     last_modified = db.DateTimeProperty(auto_now=True)
 
-    def render(self):
+    def render(self, url=None):
         self._render_text = self.content.replace('\n', '<br>')
-        return jinja_render_str("post.html", p=self)
+        url = '/blog/%s' % str(self.key().id())
+        return jinja_render_str("post.html", p=self, url=url)
 
 '''
  -----------------------
@@ -142,43 +141,31 @@ class MainPage(BlogHandler):
       # self.write('Hello, MyBlog!')
       self.render('page-top.html')
 
-class BlogFront(BlogHandler):
+class Login(BlogHandler):
     def get(self):
-        posts = Post.all().order('-created')
-        self.render('page-blogfront.html', posts=posts)
-
-class PostPage(BlogHandler):
-    def get(self, post_id):
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
-
-        if not post:
-            self.error(404)
-            return
-
-        self.render("page-permalink.html", post=post)
-
-class NewPost(BlogHandler):
-    def get(self):
-        if self.user:
-            self.render("form-newpost.html")
-        else:
-            self.redirect("/login")
+        redirect_url = self.request.get("redirectUrl")
+        if not redirect_url:
+            redirect_url = '/blog'
+        self.render('form-login.html', redirectUrl=redirect_url)
 
     def post(self):
-        if not self.user:
-            self.redirect('/blog')
-
-        subject = self.request.get('subject')
-        content = self.request.get('content')
-
-        if subject and content:
-            p = Post(parent = blog_key(), subject = subject, content = content)
-            p.put()
-            self.redirect('/blog/%s' % str(p.key().id()))
+        username = self.request.get('username')
+        password = self.request.get('password')
+        redirect_url = self.request.get("redirectUrl")
+        print redirect_url
+        u = User.login(username, password)
+        if u:
+            self.login(u)
+            self.redirect(redirect_url)
         else:
-            error = "subject and content, please!"
-            self.render("form-newpost.html", subject=subject, content=content, error=error)
+            msg = 'Invalid login'
+            self.render('form-login.html', error=msg)
+
+class Logout(BlogHandler):
+    def get(self):
+        self.logout()
+        self.redirect('/')
+
 
 class Signup(BlogHandler):
     def get(self):
@@ -191,8 +178,8 @@ class Signup(BlogHandler):
         self.verify = self.request.get('verify')
         self.email = self.request.get('email')
 
-        params = dict(username = self.username,
-                      email = self.email)
+        params = dict(username=self.username,
+                      email=self.email)
 
         if not valid_username(self.username):
             params['error_username'] = "That's not a valid username."
@@ -215,7 +202,7 @@ class Signup(BlogHandler):
             self.done()
 
     def done(self, *a, **kw):
-        #make sure the user doesn't already exist
+        # make sure the user doesn't already exist
         u = User.by_name(self.username)
         if u:
             msg = 'That user already exists.'
@@ -225,34 +212,57 @@ class Signup(BlogHandler):
             u.put()
 
             self.login(u)
-            self.redirect('/blog')
+            self.redirect('/welcome')
 
-class Login(BlogHandler):
+
+class Welcome(BlogHandler):
     def get(self):
-        self.render('form-login.html')
+        self.render('page-welcome.html', username=self.user.name)
+        # self.render("page-welcome.html")
 
-        redirect_url = self.request.get("redirectUrl")
+
+class BlogFront(BlogHandler):
+    def get(self):
+        posts = Post.all().order('-created')
+        self.render('page-blogfront.html', posts=posts)
+
+
+class Permalink(BlogHandler):
+    def get(self, post_id):
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+
+        if not post:
+            self.error(404)
+            return
+        self.render("page-permalink.html", post=post)
+
+
+class NewPost(BlogHandler):
+    def get(self):
+        if self.user:
+            self.render("form-newpost.html")
+        else:
+            self.redirect("/login?redirectUrl=/blog/newpost")
 
     def post(self):
-        username = self.request.get('username')
-        password = self.request.get('password')
+        if not self.user:
+            self.redirect('/blog')
 
-        u = User.login(username, password)
-        if u:
-            self.login(u)
-            self.redirect('/login')
+        subject = self.request.get('subject')
+        content = self.request.get('content')
+
+        if subject and content:
+            p = Post(parent=blog_key(), subject=subject, content=content)
+            p.put()
+            self.redirect('/blog/%s' % str(p.key().id()))
         else:
-            msg = 'Invalid login'
-            self.render('form-login.html', error=msg)
-
-class Logout(BlogHandler):
-    def get(self):
-        self.logout()
-        self.redirect('/')
+            error = "subject and content, please!"
+            self.render("form-newpost.html", subject=subject, content=content, error=error)
 
 '''
  -----------------------
- sanity
+ sanity check
  -----------------------
 '''
 USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
@@ -281,8 +291,9 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/login', Login),
                                ('/logout', Logout),
                                ('/signup', Signup),
+                               ('/welcome', Welcome),
                                ('/blog/?', BlogFront),
-                               ('/blog/([0-9]+)', PostPage),
+                               ('/blog/([0-9]+)', Permalink),
                                ('/blog/newpost', NewPost),
                                ],
                               debug=True)
