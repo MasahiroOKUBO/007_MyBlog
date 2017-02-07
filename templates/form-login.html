@@ -23,8 +23,11 @@
             {{ error }}
         </div>
         <input type="submit">
-        <input type="hidden" value="{{ redirectUrl }}">
+        <input type="hidden" name="redirectUrl" value="{{ redirectUrl }}">
     </form>
 
-    after redirect to {{ redirectUrl }}
+    After login, you will be redirected to {{ redirectUrl }}
+
+    <br>
+    <a href="/signup">OR... you need SignUp ?</a>
 {% endblock %}

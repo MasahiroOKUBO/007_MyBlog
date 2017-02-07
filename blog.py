@@ -145,7 +145,7 @@ class Login(BlogHandler):
     def get(self):
         redirect_url = self.request.get("redirectUrl")
         if not redirect_url:
-            redirect_url = '/blog'
+            redirect_url = '/welcome'
         self.render('form-login.html', redirectUrl=redirect_url)
 
     def post(self):
@@ -165,7 +165,6 @@ class Logout(BlogHandler):
     def get(self):
         self.logout()
         self.redirect('/')
-
 
 class Signup(BlogHandler):
     def get(self):
@@ -214,18 +213,17 @@ class Signup(BlogHandler):
             self.login(u)
             self.redirect('/welcome')
 
-
 class Welcome(BlogHandler):
     def get(self):
-        self.render('page-welcome.html', username=self.user.name)
-        # self.render("page-welcome.html")
-
+        if self.user:
+            self.render('page-welcome.html', username=self.user.name)
+        else:
+            self.redirect('/signup')
 
 class BlogFront(BlogHandler):
     def get(self):
         posts = Post.all().order('-created')
         self.render('page-blogfront.html', posts=posts)
-
 
 class Permalink(BlogHandler):
     def get(self, post_id):
@@ -236,7 +234,6 @@ class Permalink(BlogHandler):
             self.error(404)
             return
         self.render("page-permalink.html", post=post)
-
 
 class NewPost(BlogHandler):
     def get(self):
