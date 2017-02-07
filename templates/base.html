@@ -1,16 +1,11 @@
 <!DOCTYPE html>
 <html>
-<head>
+<header>
   <link type="text/css" rel="stylesheet" href="/static/main.css" />
-
-  <title>MyLoginBlog</title>
-</head>
+  <title>My Service</title>
+</header>
 
 <body>
-  <a href="/blog" class="main-title">
-    MyLoginBlog
-  </a>
-
   <div class="login-area">
     {% if user %}
       {{user.name}} (<a class="login-link" href="/logout">logout</a>)

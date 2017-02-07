@@ -1,11 +1,14 @@
 {% extends "base.html" %}
 
 {% block content %}
-
-  <a href="/blog/newpost">NEW POST</a>
-  {% for p in posts %}
-    {{ p.render() | safe }}
-    <br><br>
-  {% endfor %}
+    <a href="/">TOP</a>
+    <a href="/blog" class="main-title">
+    MyLoginBlog
+    </a>
+    <a href="/blog/newpost">NEW POST</a>
+    {% for p in posts %}
+        {{ p.render() | safe }}
+        <br><br>
+    {% endfor %}
 
 {% endblock %}
