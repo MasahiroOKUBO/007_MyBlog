@@ -140,12 +140,12 @@ class BlogHandler(webapp2.RequestHandler):
 class MainPage(BlogHandler):
   def get(self):
       # self.write('Hello, MyBlog!')
-      self.render('top.html')
+      self.render('page-top.html')
 
 class BlogFront(BlogHandler):
     def get(self):
         posts = Post.all().order('-created')
-        self.render('front.html', posts = posts)
+        self.render('page-blogfront.html', posts=posts)
 
 class PostPage(BlogHandler):
     def get(self, post_id):
@@ -156,12 +156,12 @@ class PostPage(BlogHandler):
             self.error(404)
             return
 
-        self.render("permalink.html", post = post)
+        self.render("page-permalink.html", post=post)
 
 class NewPost(BlogHandler):
     def get(self):
         if self.user:
-            self.render("newpost.html")
+            self.render("form-newpost.html")
         else:
             self.redirect("/login")
 
@@ -178,11 +178,11 @@ class NewPost(BlogHandler):
             self.redirect('/blog/%s' % str(p.key().id()))
         else:
             error = "subject and content, please!"
-            self.render("newpost.html", subject=subject, content=content, error=error)
+            self.render("form-newpost.html", subject=subject, content=content, error=error)
 
 class Signup(BlogHandler):
     def get(self):
-        self.render("signup-form.html")
+        self.render("form-signup.html")
 
     def post(self):
         have_error = False
@@ -210,7 +210,7 @@ class Signup(BlogHandler):
             have_error = True
 
         if have_error:
-            self.render('signup-form.html', **params)
+            self.render('form-signup.html', **params)
         else:
             self.done()
 
@@ -219,7 +219,7 @@ class Signup(BlogHandler):
         u = User.by_name(self.username)
         if u:
             msg = 'That user already exists.'
-            self.render('signup-form.html', error_username = msg)
+            self.render('form-signup.html', error_username=msg)
         else:
             u = User.register(self.username, self.password, self.email)
             u.put()
@@ -229,7 +229,9 @@ class Signup(BlogHandler):
 
 class Login(BlogHandler):
     def get(self):
-        self.render('login-form.html')
+        self.render('form-login.html')
+
+        redirect_url = self.request.get("redirectUrl")
 
     def post(self):
         username = self.request.get('username')
@@ -238,10 +240,10 @@ class Login(BlogHandler):
         u = User.login(username, password)
         if u:
             self.login(u)
-            self.redirect('/blog')
+            self.redirect('/login')
         else:
             msg = 'Invalid login'
-            self.render('login-form.html', error = msg)
+            self.render('form-login.html', error=msg)
 
 class Logout(BlogHandler):
     def get(self):
