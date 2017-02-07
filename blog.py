@@ -94,10 +94,10 @@ class Post(db.Model):
     created = db.DateTimeProperty(auto_now_add=True)
     last_modified = db.DateTimeProperty(auto_now=True)
 
-    def render(self, url=None):
+    def render(self):
         self._render_text = self.content.replace('\n', '<br>')
-        url = '/blog/%s' % str(self.key().id())
-        return jinja_render_str("post.html", p=self, url=url)
+        id = str(self.key().id())
+        return jinja_render_str("post.html", p=self, id=id)
 
 '''
  -----------------------
@@ -225,16 +225,6 @@ class BlogFront(BlogHandler):
         posts = Post.all().order('-created')
         self.render('page-blogfront.html', posts=posts)
 
-class Permalink(BlogHandler):
-    def get(self, post_id):
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
-
-        if not post:
-            self.error(404)
-            return
-        self.render("page-permalink.html", post=post)
-
 class NewPost(BlogHandler):
     def get(self):
         if self.user:
@@ -256,6 +246,67 @@ class NewPost(BlogHandler):
         else:
             error = "subject and content, please!"
             self.render("form-newpost.html", subject=subject, content=content, error=error)
+
+class ShowPost(BlogHandler):
+    def get(self, post_id):
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+
+        if not post:
+            self.error(404)
+            return
+        self.render("page-showpost.html", post=post)
+
+class EditPost(BlogHandler):
+    def get(self, post_id):
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+
+        if not post:
+            self.error(404)
+            return
+        self.render("form-editpost.html", post=post)
+
+    def post(self, post_id):
+        if not self.user:
+            self.redirect('/blog')
+
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+
+        post.subject = self.request.get('subject')
+        post.content = self.request.get('content')
+
+        if post.subject and post.content:
+            post.put()
+            self.redirect('/blog/%s' % str(post.key().id()))
+        else:
+            error = "subject and content, please!"
+            self.render("form-editpost.html", subject=subject, content=content, error=error)
+
+class DeletePost(BlogHandler):
+    def get(self, post_id):
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+        if not post:
+            self.error(404)
+            return
+        self.render("form-deletepost.html", post=post)
+
+    def post(self, post_id):
+        if not self.user:
+            self.redirect('/blog')
+        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+        post = db.get(key)
+
+        if post:
+            post.delete()
+            message="Delete succeeed!"
+            self.render("page-deleteconfirm.html", message=message)
+        else:
+            error = "post does not exists!"
+            self.render("page-deleteconfirm.html", message=error)
+
 
 '''
  -----------------------
@@ -290,7 +341,9 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/signup', Signup),
                                ('/welcome', Welcome),
                                ('/blog/?', BlogFront),
-                               ('/blog/([0-9]+)', Permalink),
                                ('/blog/newpost', NewPost),
+                               ('/blog/([0-9]+)', ShowPost),
+                               ('/blog/([0-9]+)/edit', EditPost),
+                               ('/blog/([0-9]+)/delete', DeletePost),
                                ],
                               debug=True)

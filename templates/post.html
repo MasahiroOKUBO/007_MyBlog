@@ -1,9 +1,10 @@
 <div class="post">
   <div class="post-heading">
     <div class="post-title">
-        <a href="{{ url }}"> {{ p.subject }} </a>
+        <a href="/blog/{{ id }}"> {{ p.subject }} </a>
     </div>
-
+      <a href="/blog/{{ id }}/edit"> EDIt </a>
+       <a href="/blog/{{ id }}/delete"> DELETE </a>
     <div class="post-date">
       {{p.created.strftime("%b %d, %Y")}}
     </div>
