@@ -5,5 +5,7 @@
     <a href="/blog" class="main-title">
     MyLoginBlog
     </a>
-  {{post.render() | safe}}
+    {{post.render() | safe}}
+    <a href="{{ plus_one_link }}" >Plus One</a>
+    <a href="{{ minus_one_link }}" >Minus One</a>
 {% endblock %}

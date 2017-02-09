@@ -8,8 +8,6 @@ from string import letters
 import webapp2
 import jinja2
 
-# TODO(masahiro.okubo.3@gmail.com)use ndb.
-# from google.appengine.ext import db
 from google.appengine.ext import ndb
 
 '''
@@ -44,23 +42,29 @@ def make_random_salt(length=5):
 def make_pw_hash(name, pw, salt=None):
     if not salt:
         salt = make_random_salt()
-    h = hashlib.sha256(name + pw + salt).hexdigest()
-    return '%s,%s' % (salt, h)
+    hash = hashlib.sha256(name + pw + salt).hexdigest()
+    return '%s,%s' % (salt, hash)
 
-def valid_pw(name, password, h):
-    salt = h.split(',')[0]
-    return h == make_pw_hash(name, password, salt)
+def valid_pw(name, password, hash):
+    salt = hash.split(',')[0]
+    return hash == make_pw_hash(name, password, salt)
 
 '''
  -----------------------
  data stuff
  -----------------------
 '''
-def users_key(group = 'default'):
-    return ndb.Key('users', group)
+def users_key(namespace = 'default'):
+    return ndb.Key('users', namespace)
 
-def blog_key(name = 'default'):
-    return ndb.Key('blogs', name)
+def posts_key(namespace ='default'):
+    return ndb.Key('blogs', namespace)
+
+def votes_key(namespace ='default'):
+    return ndb.Key('votes', namespace)
+
+def comments_key(namespace ='default'):
+    return ndb.Key('comments', namespace)
 
 class User(ndb.Model):
     name = ndb.StringProperty(required = True)
@@ -68,13 +72,14 @@ class User(ndb.Model):
     email = ndb.StringProperty()
 
     @classmethod
-    def by_id(cls, uid):
-        return User.get_by_id(uid, parent = users_key())
+    def get_user_by_id(cls, ID):
+        user = User.get_by_id(ID, parent = users_key())
+        return user
 
     @classmethod
-    def by_name(cls, name):
-        u = User.query().filter(User.name == name).get()
-        return u
+    def get_user_by_name(cls, name):
+        user = User.query().filter(User.name == name).get()
+        return user
 
     @classmethod
     def register(cls, name, pw, email = None):
@@ -86,20 +91,42 @@ class User(ndb.Model):
 
     @classmethod
     def login(cls, name, pw):
-        u = cls.by_name(name)
-        if u and valid_pw(name, pw, u.pw_hash):
-            return u
+        user = cls.get_user_by_name(name)
+        if user and valid_pw(name, pw, user.pw_hash):
+            return user
 
 class Post(ndb.Model):
     subject = ndb.StringProperty(required=True)
     content = ndb.TextProperty(required=True)
     created = ndb.DateTimeProperty(auto_now_add=True)
     last_modified = ndb.DateTimeProperty(auto_now=True)
+    author_key = ndb.KeyProperty(kind=User)
 
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
-        id = str(self.key.id())
-        return jinja_render_str("post.html", p=self, id=id)
+        ID = str(self.key.id())
+        author_id=self.author_key.id()
+        author = User.get_user_by_id(author_id)
+        author_name=author.name
+        return jinja_render_str("post.html", p=self, id=ID, author=author_name)
+
+class Vote(ndb.Model):
+    voter_key = ndb.KeyProperty(kind=User)
+    post_key = ndb.KeyProperty(kind=Post)
+
+class Comment(ndb.Model):
+    content = ndb.TextProperty(required=True)
+    created = ndb.DateTimeProperty(auto_now_add=True)
+    last_modified = ndb.DateTimeProperty(auto_now=True)
+    author_key = ndb.KeyProperty(kind=User)
+
+    def render(self):
+        self._render_text = self.content.replace('\n', '<br>')
+        author_id=self.author_key.id()
+        author = User.get_user_by_id(author_id)
+        author_name=author.name
+        return jinja_render_str("comment.html", comment=self, author=author_name)
+
 
 '''
  -----------------------
@@ -136,7 +163,7 @@ class BlogHandler(webapp2.RequestHandler):
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         uid = self.read_secure_cookie('user_id')
-        self.user = uid and User.by_id(int(uid))
+        self.user = uid and User.get_user_by_id(int(uid))
 
 class MainPage(BlogHandler):
   def get(self):
@@ -203,7 +230,7 @@ class Signup(BlogHandler):
 
     def done(self, *a, **kw):
         # make sure the user doesn't already exist
-        u = User.by_name(self.username)
+        u = User.get_user_by_name(self.username)
         if u:
             msg = 'That user already exists.'
             self.render('form-signup.html', error_username=msg)
@@ -240,9 +267,10 @@ class NewPost(BlogHandler):
 
         subject = self.request.get('subject')
         content = self.request.get('content')
+        author_key = self.user.key
 
         if subject and content:
-            p = Post(parent=blog_key(), subject=subject, content=content)
+            p = Post(parent=posts_key(), subject=subject, content=content, author_key=author_key)
             p.put()
             self.redirect('/blog/%s' % str(p.key.id()))
         else:
@@ -251,31 +279,57 @@ class NewPost(BlogHandler):
 
 class ShowPost(BlogHandler):
     def get(self, post_id):
-        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        key = ndb.Key('Post', int(post_id), parent=posts_key())
         post = key.get()
 
         if not post:
             self.error(404)
             return
-        self.render("page-showpost.html", post=post)
+
+        plus_one_link = '/blog/%s/plus1' % str(post.key.id())
+        minus_one_link = '/blog/%s/minus1' % str(post.key.id())
+
+        self.render("page-showpost.html",
+                    post=post,
+                    plus_one_link=plus_one_link,
+                    minus_one_link=minus_one_link,)
 
 class EditPost(BlogHandler):
     def get(self, post_id):
-        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        if not self.user:
+            self.redirect('/login')
+            return
+
+        key = ndb.Key('Post', int(post_id), parent=posts_key())
         post = key.get()
 
         if not post:
             self.error(404)
             return
+
+        author_id = post.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message="This is not your post!"
+            self.render("page-deleteconfirm.html", message=message)
+            return
+
         self.render("form-editpost.html", post=post)
 
     def post(self, post_id):
         if not self.user:
-            self.redirect('/blog')
-
-        key = ndb.Key('Post', int(post_id), parent=blog_key())
+            self.redirect('/login')
+            return
+        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = post_key.get()
+        author_id = post.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message="This is not your post!"
+            self.render("page-deleteconfirm.html", message=message)
+            return
+        key = ndb.Key('Post', int(post_id), parent=posts_key())
         post = key.get()
-
         post.subject = self.request.get('subject')
         post.content = self.request.get('content')
 
@@ -288,18 +342,39 @@ class EditPost(BlogHandler):
 
 class DeletePost(BlogHandler):
     def get(self, post_id):
-        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        if not self.user:
+            self.redirect('/login')
+            return
+
+        key = ndb.Key('Post', int(post_id), parent=posts_key())
         post = key.get()
         if not post:
             self.error(404)
             return
+
+        author_id = post.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message="This is not your post!"
+            self.render("page-deleteconfirm.html", message=message)
+            return
+
         self.render("form-deletepost.html", post=post)
 
     def post(self, post_id):
         if not self.user:
-            self.redirect('/blog')
-        key = ndb.Key('Post', int(post_id), parent=blog_key())
+            self.redirect('/login')
+            return
+
+        key = ndb.Key('Post', int(post_id), parent=posts_key())
         post = key.get()
+
+        author_id = post.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message="This is not your post!"
+            self.render("page-deleteconfirm.html", message=message)
+            return
 
         if post:
             post.key.delete()
@@ -307,6 +382,69 @@ class DeletePost(BlogHandler):
             self.render("page-deleteconfirm.html", message=message)
         else:
             error = "post does not exists!"
+            self.render("page-deleteconfirm.html", message=error)
+
+class PlusOne(BlogHandler):
+    def get(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = post_key.get()
+        if not post:
+            self.error(404)
+            return
+
+        author_id = post.author_key.id()
+        login_id = self.user.key.id()
+        if author_id == login_id:
+            message="do not Plus 1 your self !"
+            self.render("page-deleteconfirm.html", message=message)
+            return
+
+        self.render("form-plusminus.html", post=post)
+
+    def post(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+
+        key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = key.get()
+        voter_key = self.user.key
+
+        if voter_key and post.key:
+            vote = Vote(parent=votes_key(), voter_key=voter_key, post_key=post.key)
+            vote.put()
+            message = "vote suceeded!"
+            self.render("page-deleteconfirm.html", message=message)
+        else:
+            error = "voter_key and post_key, needed!"
+            self.render("page-deleteconfirm.html", message=error)
+
+class MinusOne(BlogHandler):
+    def get(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = post_key.get()
+        author_id = post.author_key.id()
+        login_id = self.user.key.id()
+        if author_id == login_id:
+            message="do not Plus 1 your self !"
+            self.render("page-deleteconfirm.html", message=message)
+            return
+
+        voter_key = self.user.key
+
+        if voter_key and post_key:
+            vote = Vote(parent=votes_key(), voter_key=voter_key, post_key=post.key)
+            vote.put()
+            message = "vote suceeded!"
+            self.render("page-deleteconfirm.html", message=message)
+        else:
+            error = "voter_key and post_key, needed!"
             self.render("page-deleteconfirm.html", message=error)
 
 
@@ -347,5 +485,7 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/blog/([0-9]+)', ShowPost),
                                ('/blog/([0-9]+)/edit', EditPost),
                                ('/blog/([0-9]+)/delete', DeletePost),
+                               ('/blog/([0-9]+)/plus1', PlusOne),
+                               ('/blog/([0-9]+)/minus1', MinusOne),
                                ],
                               debug=True)
