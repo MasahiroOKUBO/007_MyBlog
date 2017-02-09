@@ -8,7 +8,9 @@ from string import letters
 import webapp2
 import jinja2
 
-from google.appengine.ext import db
+# TODO(masahiro.okubo.3@gmail.com)use ndb.
+# from google.appengine.ext import db
+from google.appengine.ext import ndb
 
 '''
  -----------------------
@@ -55,15 +57,15 @@ def valid_pw(name, password, h):
  -----------------------
 '''
 def users_key(group = 'default'):
-    return db.Key.from_path('users', group)
+    return ndb.Key('users', group)
 
 def blog_key(name = 'default'):
-    return db.Key.from_path('blogs', name)
+    return ndb.Key('blogs', name)
 
-class User(db.Model):
-    name = db.StringProperty(required = True)
-    pw_hash = db.StringProperty(required = True)
-    email = db.StringProperty()
+class User(ndb.Model):
+    name = ndb.StringProperty(required = True)
+    pw_hash = ndb.StringProperty(required = True)
+    email = ndb.StringProperty()
 
     @classmethod
     def by_id(cls, uid):
@@ -71,7 +73,7 @@ class User(db.Model):
 
     @classmethod
     def by_name(cls, name):
-        u = User.all().filter('name =', name).get()
+        u = User.query().filter(User.name == name).get()
         return u
 
     @classmethod
@@ -88,15 +90,15 @@ class User(db.Model):
         if u and valid_pw(name, pw, u.pw_hash):
             return u
 
-class Post(db.Model):
-    subject = db.StringProperty(required=True)
-    content = db.TextProperty(required=True)
-    created = db.DateTimeProperty(auto_now_add=True)
-    last_modified = db.DateTimeProperty(auto_now=True)
+class Post(ndb.Model):
+    subject = ndb.StringProperty(required=True)
+    content = ndb.TextProperty(required=True)
+    created = ndb.DateTimeProperty(auto_now_add=True)
+    last_modified = ndb.DateTimeProperty(auto_now=True)
 
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
-        id = str(self.key().id())
+        id = str(self.key.id())
         return jinja_render_str("post.html", p=self, id=id)
 
 '''
@@ -126,7 +128,7 @@ class BlogHandler(webapp2.RequestHandler):
         return cookie_val and check_secure_val(cookie_val)
 
     def login(self, user):
-        self.set_secure_cookie('user_id', str(user.key().id()))
+        self.set_secure_cookie('user_id', str(user.key.id()))
 
     def logout(self):
         self.response.headers.add_header('Set-Cookie', 'user_id=; Path=/')
@@ -138,7 +140,6 @@ class BlogHandler(webapp2.RequestHandler):
 
 class MainPage(BlogHandler):
   def get(self):
-      # self.write('Hello, MyBlog!')
       self.render('page-top.html')
 
 class Login(BlogHandler):
@@ -222,7 +223,8 @@ class Welcome(BlogHandler):
 
 class BlogFront(BlogHandler):
     def get(self):
-        posts = Post.all().order('-created')
+        posts = Post.query()
+        posts = posts.order(-Post.created)
         self.render('page-blogfront.html', posts=posts)
 
 class NewPost(BlogHandler):
@@ -242,15 +244,15 @@ class NewPost(BlogHandler):
         if subject and content:
             p = Post(parent=blog_key(), subject=subject, content=content)
             p.put()
-            self.redirect('/blog/%s' % str(p.key().id()))
+            self.redirect('/blog/%s' % str(p.key.id()))
         else:
             error = "subject and content, please!"
             self.render("form-newpost.html", subject=subject, content=content, error=error)
 
 class ShowPost(BlogHandler):
     def get(self, post_id):
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
 
         if not post:
             self.error(404)
@@ -259,8 +261,8 @@ class ShowPost(BlogHandler):
 
 class EditPost(BlogHandler):
     def get(self, post_id):
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
 
         if not post:
             self.error(404)
@@ -271,23 +273,23 @@ class EditPost(BlogHandler):
         if not self.user:
             self.redirect('/blog')
 
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
 
         post.subject = self.request.get('subject')
         post.content = self.request.get('content')
 
         if post.subject and post.content:
             post.put()
-            self.redirect('/blog/%s' % str(post.key().id()))
+            self.redirect('/blog/%s' % str(post.key.id()))
         else:
             error = "subject and content, please!"
             self.render("form-editpost.html", subject=subject, content=content, error=error)
 
 class DeletePost(BlogHandler):
     def get(self, post_id):
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
         if not post:
             self.error(404)
             return
@@ -296,11 +298,11 @@ class DeletePost(BlogHandler):
     def post(self, post_id):
         if not self.user:
             self.redirect('/blog')
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
+        key = ndb.Key('Post', int(post_id), parent=blog_key())
+        post = key.get()
 
         if post:
-            post.delete()
+            post.key.delete()
             message="Delete succeeed!"
             self.render("page-deleteconfirm.html", message=message)
         else:
