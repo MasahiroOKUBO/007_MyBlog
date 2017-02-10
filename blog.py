@@ -119,14 +119,14 @@ class Comment(ndb.Model):
     created = ndb.DateTimeProperty(auto_now_add=True)
     last_modified = ndb.DateTimeProperty(auto_now=True)
     author_key = ndb.KeyProperty(kind=User)
+    post_key = ndb.KeyProperty(kind=Post)
 
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
         author_id=self.author_key.id()
         author = User.get_user_by_id(author_id)
         author_name=author.name
-        return jinja_render_str("comment.html", comment=self, author=author_name)
-
+        return jinja_render_str("comment.html", comment=self)
 
 '''
  -----------------------
@@ -311,7 +311,7 @@ class EditPost(BlogHandler):
         login_id = self.user.key.id()
         if not author_id == login_id:
             message="This is not your post!"
-            self.render("page-deleteconfirm.html", message=message)
+            self.render("page-showmessage.html", message=message)
             return
 
         self.render("form-editpost.html", post=post)
@@ -326,7 +326,7 @@ class EditPost(BlogHandler):
         login_id = self.user.key.id()
         if not author_id == login_id:
             message="This is not your post!"
-            self.render("page-deleteconfirm.html", message=message)
+            self.render("page-showmessage.html", message=message)
             return
         key = ndb.Key('Post', int(post_id), parent=posts_key())
         post = key.get()
@@ -356,7 +356,7 @@ class DeletePost(BlogHandler):
         login_id = self.user.key.id()
         if not author_id == login_id:
             message="This is not your post!"
-            self.render("page-deleteconfirm.html", message=message)
+            self.render("page-showmessage.html", message=message)
             return
 
         self.render("form-deletepost.html", post=post)
@@ -373,16 +373,16 @@ class DeletePost(BlogHandler):
         login_id = self.user.key.id()
         if not author_id == login_id:
             message="This is not your post!"
-            self.render("page-deleteconfirm.html", message=message)
+            self.render("page-showmessage.html", message=message)
             return
 
         if post:
             post.key.delete()
             message="Delete succeeed!"
-            self.render("page-deleteconfirm.html", message=message)
+            self.render("page-showmessage.html", message=message)
         else:
             error = "post does not exists!"
-            self.render("page-deleteconfirm.html", message=error)
+            self.render("page-showmessage.html", message=error)
 
 class PlusOne(BlogHandler):
     def get(self, post_id):
@@ -399,7 +399,7 @@ class PlusOne(BlogHandler):
         login_id = self.user.key.id()
         if author_id == login_id:
             message="do not Plus 1 your self !"
-            self.render("page-deleteconfirm.html", message=message)
+            self.render("page-showmessage.html", message=message)
             return
 
         self.render("form-plusminus.html", post=post)
@@ -417,10 +417,10 @@ class PlusOne(BlogHandler):
             vote = Vote(parent=votes_key(), voter_key=voter_key, post_key=post.key)
             vote.put()
             message = "vote suceeded!"
-            self.render("page-deleteconfirm.html", message=message)
+            self.render("page-showmessage.html", message=message)
         else:
             error = "voter_key and post_key, needed!"
-            self.render("page-deleteconfirm.html", message=error)
+            self.render("page-showmessage.html", message=error)
 
 class MinusOne(BlogHandler):
     def get(self, post_id):
@@ -433,7 +433,7 @@ class MinusOne(BlogHandler):
         login_id = self.user.key.id()
         if author_id == login_id:
             message="do not Plus 1 your self !"
-            self.render("page-deleteconfirm.html", message=message)
+            self.render("page-showmessage.html", message=message)
             return
 
         voter_key = self.user.key
@@ -442,10 +442,128 @@ class MinusOne(BlogHandler):
             vote = Vote(parent=votes_key(), voter_key=voter_key, post_key=post.key)
             vote.put()
             message = "vote suceeded!"
-            self.render("page-deleteconfirm.html", message=message)
+            self.render("page-showmessage.html", message=message)
         else:
             error = "voter_key and post_key, needed!"
-            self.render("page-deleteconfirm.html", message=error)
+            self.render("page-showmessage.html", message=error)
+
+
+class NewComment(BlogHandler):
+    def get(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = post_key.get()
+        author_id = post.author_key.id()
+        login_id = self.user.key.id()
+        if author_id == login_id:
+            message = "do not Plus 1 your self !"
+            self.render("page-showmessage.html", message=message)
+            return
+
+        voter_key = self.user.key
+
+        if voter_key and post_key:
+            vote = Vote(parent=votes_key(), voter_key=voter_key, post_key=post.key)
+            vote.put()
+            message = "vote suceeded!"
+            self.render("page-showmessage.html", message=message)
+        else:
+            error = "voter_key and post_key, needed!"
+            self.render("page-showmessage.html", message=error)
+
+
+class EditComment(BlogHandler):
+    def get(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+
+        key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = key.get()
+
+        if not post:
+            self.error(404)
+            return
+
+        author_id = post.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message = "This is not your post!"
+            self.render("page-showmessage.html", message=message)
+            return
+
+        self.render("form-editpost.html", post=post)
+
+    def post(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = post_key.get()
+        author_id = post.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message = "This is not your post!"
+            self.render("page-showmessage.html", message=message)
+            return
+        key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = key.get()
+        post.subject = self.request.get('subject')
+        post.content = self.request.get('content')
+
+        if post.subject and post.content:
+            post.put()
+            self.redirect('/blog/%s' % str(post.key.id()))
+        else:
+            error = "subject and content, please!"
+            self.render("form-editpost.html", subject=subject, content=content, error=error)
+
+
+class DeleteComment(BlogHandler):
+    def get(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+
+        key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = key.get()
+        if not post:
+            self.error(404)
+            return
+
+        author_id = post.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message = "This is not your post!"
+            self.render("page-showmessage.html", message=message)
+            return
+
+        self.render("form-deletepost.html", post=post)
+
+    def post(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+
+        key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = key.get()
+
+        author_id = post.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message = "This is not your post!"
+            self.render("page-showmessage.html", message=message)
+            return
+
+        if post:
+            post.key.delete()
+            message = "Delete succeeed!"
+            self.render("page-showmessage.html", message=message)
+        else:
+            error = "post does not exists!"
+            self.render("page-showmessage.html", message=error)
 
 
 '''
@@ -481,11 +599,14 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/signup', Signup),
                                ('/welcome', Welcome),
                                ('/blog/?', BlogFront),
-                               ('/blog/newpost', NewPost),
+                               ('/blog/new', NewPost),
                                ('/blog/([0-9]+)', ShowPost),
                                ('/blog/([0-9]+)/edit', EditPost),
                                ('/blog/([0-9]+)/delete', DeletePost),
                                ('/blog/([0-9]+)/plus1', PlusOne),
                                ('/blog/([0-9]+)/minus1', MinusOne),
+                               ('/blog/([0-9]+)/comment/new', NewComment),
+                               ('/blog/([0-9]+)/comment/([0-9]+)/edit', EditComment),
+                               ('/blog/([0-9]+)/comment/([0-9]+)/delete', DeleteComment),
                                ],
                               debug=True)

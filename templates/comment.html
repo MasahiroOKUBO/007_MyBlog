@@ -1,16 +1,14 @@
 <div class="post">
   <div class="post-heading">
     <div class="post-title">
-        <a href="/blog/{{ id }}"> {{ p.subject }} </a>
+        <a href="/blog"> {{ comment.subject }} </a>
     </div>
-      <a href="/blog/{{ id }}/edit"> EDIt </a>
-       <a href="/blog/{{ id }}/delete"> DELETE </a>
     <div class="post-date">
-      {{ author }} {{p.created.strftime("%b %d, %Y")}}
+        {{ comment.created.strftime("%b %d, %Y") }}
     </div>
   </div>
 
   <div class="post-content">
-    {{p._render_text | safe}}
+      {{ comment._render_text | safe }}
   </div>
 </div>

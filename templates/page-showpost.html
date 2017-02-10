@@ -8,4 +8,10 @@
     {{post.render() | safe}}
     <a href="{{ plus_one_link }}" >Plus One</a>
     <a href="{{ minus_one_link }}" >Minus One</a>
+    <a href="/comment/new">NEW COMMENT</a>
+    {% for comment in comments %}
+        {{ comment.render() | safe }}
+        <br><br>
+    {% endfor %}
 {% endblock %}
+
