@@ -493,7 +493,7 @@ class EditComment(BlogHandler):
             return
 
         comment_key = ndb.Key('Comment', int(comment_id), parent=comments_key())
-        comment = key.get()
+        comment = comment_key.get()
 
         if not comment:
             self.error(404)
@@ -506,71 +506,72 @@ class EditComment(BlogHandler):
             self.render("page-message.html", message=message)
             return
 
-        self.render("form-editcomment.html", post=post)
+        self.render("form-editcomment.html", comment=comment)
 
-    def post(self, post_id):
+    def post(self, post_id, comment_id):
         if not self.user:
             self.redirect('/login')
             return
-        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
-        post = post_key.get()
-        author_id = post.author_key.id()
+
+        comment_key = ndb.Key('Comment', int(comment_id), parent=comments_key())
+        comment = comment_key.get()
+        author_id = comment.author_key.id()
         login_id = self.user.key.id()
         if not author_id == login_id:
             message = "This is not your post!"
             self.render("page-message.html", message=message)
             return
-        key = ndb.Key('Post', int(post_id), parent=posts_key())
-        post = key.get()
-        post.subject = self.request.get('subject')
-        post.content = self.request.get('content')
 
-        if post.subject and post.content:
-            post.put()
-            self.redirect('/blog/%s' % str(post.key.id()))
+        comment.subject = self.request.get('subject')
+        comment.content = self.request.get('content')
+
+        if comment.subject and comment.content:
+            comment.put()
+            self.redirect('/blog/%s/comment/%s' % (post_id, comment_id))
         else:
             error = "subject and content, please!"
-            self.render("form-editpost.html", subject=subject, content=content, error=error)
+            self.render("form-editcomment.html",
+                        comment=comment,
+                        error=error)
 
-# TODO (me) not yet.
 class DeleteComment(BlogHandler):
-    def get(self, post_id):
+    def get(self, post_id, comment_id):
         if not self.user:
             self.redirect('/login')
             return
 
-        key = ndb.Key('Post', int(post_id), parent=posts_key())
-        post = key.get()
-        if not post:
+        comment_key = ndb.Key('Comment', int(comment_id), parent=comments_key())
+        comment = comment_key.get()
+        if not comment:
             self.error(404)
             return
 
-        author_id = post.author_key.id()
+        author_id = comment.author_key.id()
         login_id = self.user.key.id()
         if not author_id == login_id:
             message = "This is not your post!"
             self.render("page-message.html", message=message)
             return
 
-        self.render("form-deletepost.html", post=post)
+        self.render("form-deletecomment.html", comment=comment)
 
-    def post(self, post_id):
+    def post(self, post_id, comment_id):
         if not self.user:
             self.redirect('/login')
             return
 
-        key = ndb.Key('Post', int(post_id), parent=posts_key())
-        post = key.get()
+        comment_key = ndb.Key('Comment', int(comment_id), parent=comments_key())
+        comment = comment_key.get()
 
-        author_id = post.author_key.id()
+        author_id = comment.author_key.id()
         login_id = self.user.key.id()
         if not author_id == login_id:
             message = "This is not your post!"
             self.render("page-message.html", message=message)
             return
 
-        if post:
-            post.key.delete()
+        if comment:
+            comment.key.delete()
             message = "Delete succeeed!"
             self.render("page-message.html", message=message)
         else:
