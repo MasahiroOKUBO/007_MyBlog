@@ -1,0 +1,13 @@
+{% extends "part-base.html" %}
+
+{% block content %}
+    <a href="/">TOP</a>
+    <a href="/blog" class="main-title">MyLoginBlog</a>
+    <form method="get" action="/blog/new">
+        <input type="submit" value="New POST">
+    </form>
+    {% for post in posts %}
+        {{ post.render() | safe }}
+        <br><br>
+    {% endfor %}
+{% endblock %}

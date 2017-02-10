@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "part-base.html" %}
 
 {% block content %}
     <a href="/">TOP</a>
@@ -12,7 +12,7 @@
             <input type="text" name="subject" value="{{ subject }}">
         </label>
         <label>
-            <div>blog</div>
+            <div>your coment</div>
             <textarea name="content">{{ content }}</textarea>
         </label>
         <div class="error">{{ error }}</div>

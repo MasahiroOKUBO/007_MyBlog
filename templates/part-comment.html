@@ -1,7 +1,7 @@
 <div class="post">
   <div class="post-heading">
     <div class="post-title">
-        <a href="/blog"> {{ comment.subject }} </a>
+        <a href="/blog/{{ post_id }}/comment/{{ comment_id }}"> {{ comment.subject }} </a>
     </div>
     <div class="post-date">
         {{ comment.created.strftime("%b %d, %Y") }}

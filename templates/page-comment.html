@@ -1,0 +1,15 @@
+{% extends "part-base.html" %}
+
+{% block content %}
+    <a href="/">TOP</a>
+    <a href="/blog" class="main-title">
+        MyLoginBlog
+    </a>
+    <form method="get" action="/blog/{{ post_id }}/comment/{{ comment_id }}/edit">
+        <input type="submit" value="EDIT">
+    </form>
+    <form method="get" action="/blog/{{ post_id }}/comment/{{ comment_id }}/delete">
+        <input type="submit" value="DELETE">
+    </form>
+    {{ comment.render() | safe }}
+{% endblock %}

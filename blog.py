@@ -104,17 +104,20 @@ class Post(ndb.Model):
 
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
-        ID = str(self.key.id())
+        post_id = str(self.key.id())
         author_id=self.author_key.id()
         author = User.get_user_by_id(author_id)
         author_name=author.name
-        return jinja_render_str("post.html", p=self, id=ID, author=author_name)
+        votes = Vote.query().filter(Vote.post_key == self.key).count()
+
+        return jinja_render_str("part-post.html", post=self, post_id=post_id, author=author_name, votes=votes)
 
 class Vote(ndb.Model):
     voter_key = ndb.KeyProperty(kind=User)
     post_key = ndb.KeyProperty(kind=Post)
 
 class Comment(ndb.Model):
+    subject = ndb.StringProperty(required=True)
     content = ndb.TextProperty(required=True)
     created = ndb.DateTimeProperty(auto_now_add=True)
     last_modified = ndb.DateTimeProperty(auto_now=True)
@@ -126,7 +129,14 @@ class Comment(ndb.Model):
         author_id=self.author_key.id()
         author = User.get_user_by_id(author_id)
         author_name=author.name
-        return jinja_render_str("comment.html", comment=self)
+        post_id=self.post_key.id()
+        comment_id = str(self.key.id())
+
+        return jinja_render_str("part-comment.html",
+                                comment=self,
+                                comment_author=author_name,
+                                post_id=post_id,
+                                comment_id=comment_id)
 
 '''
  -----------------------
@@ -252,7 +262,7 @@ class BlogFront(BlogHandler):
     def get(self):
         posts = Post.query()
         posts = posts.order(-Post.created)
-        self.render('page-blogfront.html', posts=posts)
+        self.render('page-blog.html', posts=posts)
 
 class NewPost(BlogHandler):
     def get(self):
@@ -279,20 +289,20 @@ class NewPost(BlogHandler):
 
 class ShowPost(BlogHandler):
     def get(self, post_id):
-        key = ndb.Key('Post', int(post_id), parent=posts_key())
-        post = key.get()
-
+        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = post_key.get()
+        post_id = str(post.key.id())
         if not post:
             self.error(404)
             return
-
-        plus_one_link = '/blog/%s/plus1' % str(post.key.id())
-        minus_one_link = '/blog/%s/minus1' % str(post.key.id())
-
-        self.render("page-showpost.html",
+        comments =  Comment.query()\
+            .filter(Comment.post_key == post_key)\
+            .order(-Comment.created) \
+            .fetch(10)
+        self.render("page-post.html",
                     post=post,
-                    plus_one_link=plus_one_link,
-                    minus_one_link=minus_one_link,)
+                    post_id=post_id,
+                    comments=comments)
 
 class EditPost(BlogHandler):
     def get(self, post_id):
@@ -311,7 +321,7 @@ class EditPost(BlogHandler):
         login_id = self.user.key.id()
         if not author_id == login_id:
             message="This is not your post!"
-            self.render("page-showmessage.html", message=message)
+            self.render("page-message.html", message=message)
             return
 
         self.render("form-editpost.html", post=post)
@@ -326,7 +336,7 @@ class EditPost(BlogHandler):
         login_id = self.user.key.id()
         if not author_id == login_id:
             message="This is not your post!"
-            self.render("page-showmessage.html", message=message)
+            self.render("page-message.html", message=message)
             return
         key = ndb.Key('Post', int(post_id), parent=posts_key())
         post = key.get()
@@ -356,7 +366,7 @@ class DeletePost(BlogHandler):
         login_id = self.user.key.id()
         if not author_id == login_id:
             message="This is not your post!"
-            self.render("page-showmessage.html", message=message)
+            self.render("page-message.html", message=message)
             return
 
         self.render("form-deletepost.html", post=post)
@@ -373,128 +383,130 @@ class DeletePost(BlogHandler):
         login_id = self.user.key.id()
         if not author_id == login_id:
             message="This is not your post!"
-            self.render("page-showmessage.html", message=message)
+            self.render("page-message.html", message=message)
             return
 
         if post:
             post.key.delete()
             message="Delete succeeed!"
-            self.render("page-showmessage.html", message=message)
+            self.render("page-message.html", message=message)
         else:
             error = "post does not exists!"
-            self.render("page-showmessage.html", message=error)
+            self.render("page-message.html", message=error)
 
-class PlusOne(BlogHandler):
-    def get(self, post_id):
-        if not self.user:
-            self.redirect('/login')
-            return
-        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
-        post = post_key.get()
-        if not post:
-            self.error(404)
-            return
-
-        author_id = post.author_key.id()
-        login_id = self.user.key.id()
-        if author_id == login_id:
-            message="do not Plus 1 your self !"
-            self.render("page-showmessage.html", message=message)
-            return
-
-        self.render("form-plusminus.html", post=post)
-
+class CastVote(BlogHandler):
     def post(self, post_id):
         if not self.user:
             self.redirect('/login')
             return
 
-        key = ndb.Key('Post', int(post_id), parent=posts_key())
-        post = key.get()
+        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = post_key.get()
+
         voter_key = self.user.key
+
+        old_vote = Vote.query() \
+            .filter(Vote.voter_key == voter_key) \
+            .filter(Vote.post_key == post.key) \
+            .get()
+
+        if old_vote:
+            message = "already voted!"
+            self.render("page-message.html", message=message)
+            return
 
         if voter_key and post.key:
             vote = Vote(parent=votes_key(), voter_key=voter_key, post_key=post.key)
             vote.put()
             message = "vote suceeded!"
-            self.render("page-showmessage.html", message=message)
-        else:
-            error = "voter_key and post_key, needed!"
-            self.render("page-showmessage.html", message=error)
+            self.render("page-message.html", message=message)
 
-class MinusOne(BlogHandler):
-    def get(self, post_id):
+class RemoveVote(BlogHandler):
+    def post(self, post_id):
         if not self.user:
             self.redirect('/login')
             return
+
         post_key = ndb.Key('Post', int(post_id), parent=posts_key())
         post = post_key.get()
-        author_id = post.author_key.id()
-        login_id = self.user.key.id()
-        if author_id == login_id:
-            message="do not Plus 1 your self !"
-            self.render("page-showmessage.html", message=message)
-            return
 
         voter_key = self.user.key
 
-        if voter_key and post_key:
-            vote = Vote(parent=votes_key(), voter_key=voter_key, post_key=post.key)
-            vote.put()
-            message = "vote suceeded!"
-            self.render("page-showmessage.html", message=message)
-        else:
-            error = "voter_key and post_key, needed!"
-            self.render("page-showmessage.html", message=error)
+        old_vote = Vote.query() \
+            .filter(Vote.voter_key == voter_key) \
+            .filter(Vote.post_key == post.key) \
+            .get()
 
+        if not old_vote:
+            message = "you have not voted yet!"
+            self.render("page-message.html", message=message)
+            return
+        else:
+            old_vote.key.delete()
+            message = "delete vote, succeed!"
+            self.render("page-message.html", message=message)
 
 class NewComment(BlogHandler):
     def get(self, post_id):
         if not self.user:
-            self.redirect('/login')
-            return
-        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
-        post = post_key.get()
-        author_id = post.author_key.id()
-        login_id = self.user.key.id()
-        if author_id == login_id:
-            message = "do not Plus 1 your self !"
-            self.render("page-showmessage.html", message=message)
-            return
-
-        voter_key = self.user.key
-
-        if voter_key and post_key:
-            vote = Vote(parent=votes_key(), voter_key=voter_key, post_key=post.key)
-            vote.put()
-            message = "vote suceeded!"
-            self.render("page-showmessage.html", message=message)
+            self.redirect("/login?redirectUrl=/blog/%s/comment/new" % post_id)
         else:
-            error = "voter_key and post_key, needed!"
-            self.render("page-showmessage.html", message=error)
+            self.render("form-newcomment.html")
 
+    def post(self, post_id):
+        if not self.user:
+            self.redirect('/blog')
+
+        subject = self.request.get('subject')
+        content = self.request.get('content')
+        author_key = self.user.key
+        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
+
+        if content:
+            comment = Comment(parent=comments_key(),
+                              subject=subject,
+                              content=content,
+                              author_key=author_key,
+                              post_key=post_key)
+            comment.put()
+            self.redirect('/blog')
+        else:
+            error = "subject & content, please!"
+            self.render("form-newcomment.html", subject=subject, content=content, error=error)
+
+class ShowComment(BlogHandler):
+    def get(self, post_id, comment_id):
+        comment_key = ndb.Key('Comment', int(comment_id), parent=comments_key())
+        comment = comment_key.get()
+        if not comment:
+            self.error(404)
+            return
+        self.render("page-comment.html",
+                    comment=comment,
+                    post_id=post_id,
+                    comment_id=comment_id)
 
 class EditComment(BlogHandler):
-    def get(self, post_id):
+    def get(self, post_id, comment_id):
         if not self.user:
             self.redirect('/login')
             return
 
-        key = ndb.Key('Post', int(post_id), parent=posts_key())
-        post = key.get()
+        comment_key = ndb.Key('Comment', int(comment_id), parent=comments_key())
+        comment = key.get()
 
-        if not post:
+        if not comment:
             self.error(404)
             return
 
-        author_id = post.author_key.id()
+        author_id = comment.author_key.id()
         login_id = self.user.key.id()
         if not author_id == login_id:
-            message = "This is not your post!"
-            self.render("page-showmessage.html", message=message)
+            message = "This is not your comment!"
+            self.render("page-message.html", message=message)
             return
 
-        self.render("form-editpost.html", post=post)
+        self.render("form-editcomment.html", post=post)
 
     def post(self, post_id):
         if not self.user:
@@ -506,7 +518,7 @@ class EditComment(BlogHandler):
         login_id = self.user.key.id()
         if not author_id == login_id:
             message = "This is not your post!"
-            self.render("page-showmessage.html", message=message)
+            self.render("page-message.html", message=message)
             return
         key = ndb.Key('Post', int(post_id), parent=posts_key())
         post = key.get()
@@ -520,7 +532,7 @@ class EditComment(BlogHandler):
             error = "subject and content, please!"
             self.render("form-editpost.html", subject=subject, content=content, error=error)
 
-
+# TODO (me) not yet.
 class DeleteComment(BlogHandler):
     def get(self, post_id):
         if not self.user:
@@ -537,7 +549,7 @@ class DeleteComment(BlogHandler):
         login_id = self.user.key.id()
         if not author_id == login_id:
             message = "This is not your post!"
-            self.render("page-showmessage.html", message=message)
+            self.render("page-message.html", message=message)
             return
 
         self.render("form-deletepost.html", post=post)
@@ -554,16 +566,16 @@ class DeleteComment(BlogHandler):
         login_id = self.user.key.id()
         if not author_id == login_id:
             message = "This is not your post!"
-            self.render("page-showmessage.html", message=message)
+            self.render("page-message.html", message=message)
             return
 
         if post:
             post.key.delete()
             message = "Delete succeeed!"
-            self.render("page-showmessage.html", message=message)
+            self.render("page-message.html", message=message)
         else:
             error = "post does not exists!"
-            self.render("page-showmessage.html", message=error)
+            self.render("page-message.html", message=error)
 
 
 '''
@@ -603,9 +615,10 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/blog/([0-9]+)', ShowPost),
                                ('/blog/([0-9]+)/edit', EditPost),
                                ('/blog/([0-9]+)/delete', DeletePost),
-                               ('/blog/([0-9]+)/plus1', PlusOne),
-                               ('/blog/([0-9]+)/minus1', MinusOne),
+                               ('/blog/([0-9]+)/castvote', CastVote),
+                               ('/blog/([0-9]+)/removevote', RemoveVote),
                                ('/blog/([0-9]+)/comment/new', NewComment),
+                               ('/blog/([0-9]+)/comment/([0-9]+)', ShowComment),
                                ('/blog/([0-9]+)/comment/([0-9]+)/edit', EditComment),
                                ('/blog/([0-9]+)/comment/([0-9]+)/delete', DeleteComment),
                                ],
