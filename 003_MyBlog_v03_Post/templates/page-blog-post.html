@@ -1,0 +1,10 @@
+{% extends "part-base.html" %}
+
+{% block content %}
+    <a href="/blog" class="main-title">
+        MyBlog
+    </a>
+    <form method="get" action="/blog/{{ post_id }}/edit"><input type="submit" value="EDIT"></form>
+    <form method="get" action="/blog/{{ post_id }}/delete"><input type="submit" value="DELETE"></form>
+    {{ p.render() | safe }}
+{% endblock %}
