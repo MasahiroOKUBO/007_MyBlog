@@ -1,0 +1,16 @@
+<div class="post">
+    <div class="post-heading">
+        <div class="post-title">
+            <a href="/blog/{{ post_id }}/comment/{{ comment_id }}"> {{ c.subject }} </a>
+        </div>
+        <div class="post-date">
+            {{ author }}
+            <br>
+            {{ c.created.strftime("%b %d, %Y") }}
+        </div>
+    </div>
+
+    <div class="post-content">
+        {{ c._render_text | safe }}
+    </div>
+</div>

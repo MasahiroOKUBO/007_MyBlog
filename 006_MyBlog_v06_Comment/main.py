@@ -134,6 +134,31 @@ class Vote(ndb.Model):
     voter_key = ndb.KeyProperty(kind=User)
     post_key = ndb.KeyProperty(kind=Post)
 
+def comments_key(namespace ='default'):
+    return ndb.Key('comments', namespace)
+
+class Comment(ndb.Model):
+    subject = ndb.StringProperty(required=True)
+    content = ndb.TextProperty(required=True)
+    created = ndb.DateTimeProperty(auto_now_add=True)
+    last_modified = ndb.DateTimeProperty(auto_now=True)
+    author_key = ndb.KeyProperty(kind=User)
+    post_key = ndb.KeyProperty(kind=Post)
+
+    def render(self):
+        self._render_text = self.content.replace('\n', '<br>')
+        author_id=self.author_key.id()
+        author = User.by_id(author_id)
+        author_name=author.name
+        post_id = self.post_key.id()
+        comment_id = self.key.id()
+
+        return render_str("part-comment.html",
+                          c=self,
+                          author=author_name,
+                          post_id=post_id,
+                          comment_id=comment_id)
+
 '''
  -----------------------
  handler
@@ -284,12 +309,19 @@ class ShowPost(BaseHandler):
         # post = Post.get_by_id(int(post_id)) # no work
         key = ndb.Key('Post', int(post_id), parent=posts_key())
         post = key.get()
-        print post
+
+        comments = Comment.query() \
+            .filter(Comment.post_key == key) \
+            .order(-Comment.created) \
+            .fetch(10)
 
         if not post:
             self.error(404)
             return
-        self.render("page-blog-post.html", p=post, post_id=post_id)
+        self.render("page-blog-post.html",
+                    p=post,
+                    post_id=post_id,
+                    comments=comments)
 
 class EditPost(BaseHandler):
     def get(self, post_id):
@@ -436,6 +468,47 @@ class DeleteVote(BaseHandler):
             message = "delete vote, succeed!"
             self.render("page-message.html", message=message)
 
+class NewComment(BaseHandler):
+    def get(self, post_id):
+        if not self.user:
+            self.redirect("/login?redirectUrl=/blog/%s/comment/new" % post_id)
+        else:
+            self.render("form-new-comment.html")
+
+    def post(self, post_id):
+        if not self.user:
+            self.redirect('/blog')
+
+        subject = self.request.get('subject')
+        content = self.request.get('content')
+        author_key = self.user.key
+        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
+
+        if content:
+            comment = Comment(parent=comments_key(),
+                              subject=subject,
+                              content=content,
+                              author_key=author_key,
+                              post_key=post_key)
+            comment.put()
+            self.redirect('/blog')
+        else:
+            error = "subject & content, please!"
+            self.render("form-new-comment.html", subject=subject, content=content, error=error)
+
+class ShowComment(BaseHandler):
+    def get(self, post_id, comment_id):
+        comment_key = ndb.Key('Comment', int(comment_id), parent=comments_key())
+        comment = comment_key.get()
+        if not comment:
+            self.error(404)
+            return
+        self.render("page-blog-comment.html",
+                    c=comment,
+                    post_id=post_id,
+                    comment_id=comment_id)
+
+
 
 '''
  -----------------------
@@ -454,5 +527,7 @@ app = webapp2.WSGIApplication([('/', TopPage),
                                ('/blog/([0-9]+)/deletepost', DeletePost),
                                ('/blog/([0-9]+)/newvote', NewVote),
                                ('/blog/([0-9]+)/deletevote', DeleteVote),
+                               ('/blog/([0-9]+)/comment/new', NewComment),
+                               ('/blog/([0-9]+)/comment/([0-9]+)', ShowComment),
                                ],
                               debug=True)

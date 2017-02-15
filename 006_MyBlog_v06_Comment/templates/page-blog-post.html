@@ -9,4 +9,9 @@
     <form method="post" action="/blog/{{ post_id }}/newvote"><input type="submit" value="+1"></form>
     <form method="post" action="/blog/{{ post_id }}/deletevote"><input type="submit" value="-1"></form>
     {{ p.render() | safe }}
+    <br><br>
+    {% for comment in comments %}
+        {{ comment.render() | safe }}
+        <br><br>
+    {% endfor %}
 {% endblock %}
