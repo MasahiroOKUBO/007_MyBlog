@@ -119,12 +119,9 @@ class Post(ndb.Model):
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
         post_id = str(self.key.id())
-        author = self.author_key.get()
-        print author
         return render_str("part-post.html",
                           p = self,
                           post_id=post_id)
-
 
 '''
  -----------------------
@@ -261,9 +258,10 @@ class NewPost(BaseHandler):
 
         subject = self.request.get('subject')
         content = self.request.get('content')
+        author_key = self.user.key
 
         if subject and content:
-            p = Post(parent = posts_key(), subject = subject, content = content)
+            p = Post(parent=posts_key(), subject=subject, content=content, author_key=author_key)
             p.put()
             self.redirect('/blog/%s' % str(p.key.id()))
         else:
@@ -280,9 +278,9 @@ class ShowPost(BaseHandler):
         if not post:
             self.error(404)
             return
-        self.render("page-blog-post.html", p=post)
+        self.render("page-blog-post.html", p=post, post_id=post_id)
 
-class EditPost(BlogHandler):
+class EditPost(BaseHandler):
     def get(self, post_id):
         if not self.user:
             self.redirect('/login')
@@ -295,8 +293,11 @@ class EditPost(BlogHandler):
             self.error(404)
             return
 
+        print post.author_key
         author_id = post.author_key.id()
         login_id = self.user.key.id()
+        print author_id
+        print login_id
         if not author_id == login_id:
             message="This is not your post!"
             self.render("page-message.html", message=message)
@@ -328,7 +329,7 @@ class EditPost(BlogHandler):
             error = "subject and content, please!"
             self.render("form-editpost.html", subject=subject, content=content, error=error)
 
-class DeletePost(BlogHandler):
+class DeletePost(BaseHandler):
     def get(self, post_id):
         if not self.user:
             self.redirect('/login')
@@ -347,7 +348,7 @@ class DeletePost(BlogHandler):
             self.render("page-message.html", message=message)
             return
 
-        self.render("form-deletepost.html", post=post)
+        self.render("form-delete-post.html", p=post)
 
     def post(self, post_id):
         if not self.user:
