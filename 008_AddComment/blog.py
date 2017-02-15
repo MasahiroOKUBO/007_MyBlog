@@ -291,11 +291,12 @@ class ShowPost(BlogHandler):
     def get(self, post_id):
         post_key = ndb.Key('Post', int(post_id), parent=posts_key())
         post = post_key.get()
-        post_id = str(post.key.id())
+        #post = Post.get_by_id(int(post_id))
+        # post_id = str(post.key.id())
         if not post:
             self.error(404)
             return
-        comments =  Comment.query()\
+        comments = Comment.query()\
             .filter(Comment.post_key == post_key)\
             .order(-Comment.created) \
             .fetch(10)
@@ -577,7 +578,6 @@ class DeleteComment(BlogHandler):
         else:
             error = "post does not exists!"
             self.render("page-message.html", message=error)
-
 
 '''
  -----------------------
