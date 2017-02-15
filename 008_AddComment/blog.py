@@ -17,9 +17,19 @@ from google.appengine.ext import ndb
 '''
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir), autoescape=True)
+
 def jinja_render_str(template, **params):
     t = jinja_env.get_template(template)
     return t.render(params)
+
+'''
+ -----------------------
+ misc
+ -----------------------
+'''
+def render_post(response, post):
+  response.out.write('<b>' + post.subject + '</b><br>')
+  response.out.write(post.content)
 
 '''
  -----------------------
@@ -58,7 +68,7 @@ def users_key(namespace = 'default'):
     return ndb.Key('users', namespace)
 
 def posts_key(namespace ='default'):
-    return ndb.Key('blogs', namespace)
+    return ndb.Key('posts', namespace)
 
 def votes_key(namespace ='default'):
     return ndb.Key('votes', namespace)
@@ -597,9 +607,7 @@ def valid_password(password):
 def valid_email(email):
     return not email or EMAIL_RE.match(email)
 
-def render_post(response, post):
-  response.out.write('<b>' + post.subject + '</b><br>')
-  response.out.write(post.content)
+
 
 '''
  -----------------------
