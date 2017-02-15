@@ -125,7 +125,7 @@ class Post(ndb.Model):
                           p = self,
                           post_id=post_id,
                           author=author_name,
-                          votes=votes)
+                          likes=votes)
 
 def votes_key(namespace ='default'):
     return ndb.Key('votes', namespace)
@@ -279,7 +279,7 @@ class BlogFront(BaseHandler):
     def get(self):
         # posts = Post.all().order('-created')
         posts = Post.query().order(-Post.created)
-        self.render('page-blog-front.html', posts = posts)
+        self.render('page-blog-top.html', posts = posts)
 
 class NewPost(BaseHandler):
     def get(self):
@@ -299,7 +299,7 @@ class NewPost(BaseHandler):
         if subject and content:
             p = Post(parent=posts_key(), subject=subject, content=content, author_key=author_key)
             p.put()
-            self.redirect('/blog/%s' % str(p.key.id()))
+            self.redirect('/blog/%s/show' % str(p.key.id()))
         else:
             error = "subject and content, please!"
             self.render("form-new-post.html", subject=subject, content=content, error=error)
@@ -367,7 +367,7 @@ class EditPost(BaseHandler):
 
         if post.subject and post.content:
             post.put()
-            self.redirect('/blog/%s' % str(post.key.id()))
+            self.redirect('/blog/%s/show' % str(post.key.id()))
         else:
             error = "subject and content, please!"
             self.render("form-editpost.html", subject=subject, content=content, error=error)
@@ -416,7 +416,7 @@ class DeletePost(BaseHandler):
             error = "post does not exists!"
             self.render("page-message.html", message=error)
 
-class NewVote(BaseHandler):
+class CastVote(BaseHandler):
     def post(self, post_id):
         if not self.user:
             self.redirect('/login')
@@ -443,7 +443,7 @@ class NewVote(BaseHandler):
             message = "vote suceeded!"
             self.render("page-message.html", message=message)
 
-class DeleteVote(BaseHandler):
+class CastVeto(BaseHandler):
     def post(self, post_id):
         if not self.user:
             self.redirect('/login')
@@ -508,6 +508,98 @@ class ShowComment(BaseHandler):
                     post_id=post_id,
                     comment_id=comment_id)
 
+class EditComment(BaseHandler):
+    def get(self, post_id, comment_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+
+        comment_key = ndb.Key('Comment', int(comment_id), parent=comments_key())
+        comment = comment_key.get()
+
+        if not comment:
+            self.error(404)
+            return
+
+        author_id = comment.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message = "This is not your comment!"
+            self.render("page-message.html", message=message)
+            return
+
+        self.render("form-edit-comment.html", comment=comment)
+
+    def post(self, post_id, comment_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+
+        comment_key = ndb.Key('Comment', int(comment_id), parent=comments_key())
+        comment = comment_key.get()
+        author_id = comment.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message = "This is not your post!"
+            self.render("page-message.html", message=message)
+            return
+
+        comment.subject = self.request.get('subject')
+        comment.content = self.request.get('content')
+
+        if comment.subject and comment.content:
+            comment.put()
+            self.redirect('/blog/%s/comment/%s/show' % (post_id, comment_id))
+        else:
+            error = "subject and content, please!"
+            self.render("form-editcomment.html",
+                        comment=comment,
+                        error=error)
+
+class DeleteComment(BaseHandler):
+    def get(self, post_id, comment_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+
+        comment_key = ndb.Key('Comment', int(comment_id), parent=comments_key())
+        comment = comment_key.get()
+        if not comment:
+            self.error(404)
+            return
+
+        author_id = comment.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message = "This is not your post!"
+            self.render("page-message.html", message=message)
+            return
+
+        self.render("form-delete-comment.html", c=comment)
+
+    def post(self, post_id, comment_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+
+        comment_key = ndb.Key('Comment', int(comment_id), parent=comments_key())
+        comment = comment_key.get()
+
+        author_id = comment.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message = "This is not your comment!"
+            self.render("page-message.html", message=message)
+            return
+
+        if comment:
+            comment.key.delete()
+            message = "Delete succeeed!"
+            self.render("page-message.html", message=message)
+        else:
+            error = "post does not exists!"
+            self.render("page-message.html", message=error)
+
 
 
 '''
@@ -522,12 +614,14 @@ app = webapp2.WSGIApplication([('/', TopPage),
                                ('/logout', Logout),
                                ('/blog/?', BlogFront),
                                ('/blog/newpost', NewPost),
-                               ('/blog/([0-9]+)', ShowPost),
-                               ('/blog/([0-9]+)/editpost', EditPost),
-                               ('/blog/([0-9]+)/deletepost', DeletePost),
-                               ('/blog/([0-9]+)/newvote', NewVote),
-                               ('/blog/([0-9]+)/deletevote', DeleteVote),
+                               ('/blog/([0-9]+)/show', ShowPost),
+                               ('/blog/([0-9]+)/edit', EditPost),
+                               ('/blog/([0-9]+)/delete', DeletePost),
+                               ('/blog/([0-9]+)/vote', CastVote),
+                               ('/blog/([0-9]+)/veto', CastVeto),
                                ('/blog/([0-9]+)/comment/new', NewComment),
-                               ('/blog/([0-9]+)/comment/([0-9]+)', ShowComment),
+                               ('/blog/([0-9]+)/comment/([0-9]+)/show', ShowComment),
+                               ('/blog/([0-9]+)/comment/([0-9]+)/edit', EditComment),
+                               ('/blog/([0-9]+)/comment/([0-9]+)/delete', DeleteComment),
                                ],
                               debug=True)

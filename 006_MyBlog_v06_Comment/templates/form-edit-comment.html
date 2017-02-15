@@ -2,16 +2,17 @@
 
 {% block content %}
     <a href="/blog" class="main-title">MyLoginBlog</a>
-    <h2>edit post</h2>
+    <h2>edit comment</h2>
     <form method="post">
         <label>
             <div>subject</div>
-            <input type="text" name="subject" value="{{ p.subject }}">
+            <input type="text" name="subject" value="{{ comment.subject }}">
         </label>
         <label>
             <div>blog</div>
-            <textarea name="content">{{ p.content }}</textarea>
+            <textarea name="content">{{ comment.content }}</textarea>
         </label>
+        <div class="error">{{ error }}</div>
         <input type="submit" value="update">
     </form>
 {% endblock %}
