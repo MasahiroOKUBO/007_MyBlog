@@ -3,9 +3,12 @@
     <div class="post-title">
       <a href="/blog/{{ post_id }}"> {{ p.subject }} </a>
     </div>
-
     <div class="post-date">
-      {{p.created.strftime("%b %d, %Y")}}
+        {{ votes }} people like this.
+        <br>
+        {{ author }} write this post.
+        <br>
+        {{p.created.strftime("%b %d, %Y")}}
     </div>
   </div>
 

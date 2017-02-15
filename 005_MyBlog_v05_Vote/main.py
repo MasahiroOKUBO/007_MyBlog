@@ -104,8 +104,6 @@ class User(ndb.Model):
         if u and valid_pw(name, pw, u.pw_hash):
             return u
 
-
-
 def posts_key(namespace = 'default'):
     return ndb.Key('posts', namespace)
 
@@ -119,9 +117,22 @@ class Post(ndb.Model):
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
         post_id = str(self.key.id())
+        author_id = self.author_key.id()
+        author = User.by_id(author_id)
+        author_name = author.name
+        votes = Vote.query().filter(Vote.post_key == self.key).count()
         return render_str("part-post.html",
                           p = self,
-                          post_id=post_id)
+                          post_id=post_id,
+                          author=author_name,
+                          votes=votes)
+
+def votes_key(namespace ='default'):
+    return ndb.Key('votes', namespace)
+
+class Vote(ndb.Model):
+    voter_key = ndb.KeyProperty(kind=User)
+    post_key = ndb.KeyProperty(kind=Post)
 
 '''
  -----------------------
@@ -373,6 +384,58 @@ class DeletePost(BaseHandler):
             error = "post does not exists!"
             self.render("page-message.html", message=error)
 
+class NewVote(BaseHandler):
+    def post(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+
+        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = post_key.get()
+
+        voter_key = self.user.key
+
+        old_vote = Vote.query() \
+            .filter(Vote.voter_key == voter_key) \
+            .filter(Vote.post_key == post.key) \
+            .get()
+
+        if old_vote:
+            message = "already voted!"
+            self.render("page-message.html", message=message)
+            return
+
+        if voter_key and post.key:
+            vote = Vote(parent=votes_key(), voter_key=voter_key, post_key=post.key)
+            vote.put()
+            message = "vote suceeded!"
+            self.render("page-message.html", message=message)
+
+class DeleteVote(BaseHandler):
+    def post(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+
+        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = post_key.get()
+
+        voter_key = self.user.key
+
+        old_vote = Vote.query() \
+            .filter(Vote.voter_key == voter_key) \
+            .filter(Vote.post_key == post.key) \
+            .get()
+
+        if not old_vote:
+            message = "you have not voted yet!"
+            self.render("page-message.html", message=message)
+            return
+        else:
+            old_vote.key.delete()
+            message = "delete vote, succeed!"
+            self.render("page-message.html", message=message)
+
 
 '''
  -----------------------
@@ -387,7 +450,9 @@ app = webapp2.WSGIApplication([('/', TopPage),
                                ('/blog/?', BlogFront),
                                ('/blog/newpost', NewPost),
                                ('/blog/([0-9]+)', ShowPost),
-                               ('/blog/([0-9]+)/edit', EditPost),
-                               ('/blog/([0-9]+)/delete', DeletePost),
+                               ('/blog/([0-9]+)/editpost', EditPost),
+                               ('/blog/([0-9]+)/deletepost', DeletePost),
+                               ('/blog/([0-9]+)/newvote', NewVote),
+                               ('/blog/([0-9]+)/deletevote', DeleteVote),
                                ],
                               debug=True)

@@ -4,7 +4,9 @@
     <a href="/blog" class="main-title">
         MyBlog
     </a>
-    <form method="get" action="/blog/{{ post_id }}/edit"><input type="submit" value="EDIT"></form>
-    <form method="get" action="/blog/{{ post_id }}/delete"><input type="submit" value="DELETE"></form>
+    <form method="get" action="/blog/{{ post_id }}/editpost"><input type="submit" value="EDIT"></form>
+    <form method="get" action="/blog/{{ post_id }}/deletepost"><input type="submit" value="DELETE"></form>
+    <form method="post" action="/blog/{{ post_id }}/newvote"><input type="submit" value="+1"></form>
+    <form method="post" action="/blog/{{ post_id }}/deletevote"><input type="submit" value="-1"></form>
     {{ p.render() | safe }}
 {% endblock %}
