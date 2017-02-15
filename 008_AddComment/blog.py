@@ -615,10 +615,10 @@ def valid_email(email):
  -----------------------
 '''
 app = webapp2.WSGIApplication([('/', MainPage),
-                               ('/login', Login),
-                               ('/logout', Logout),
                                ('/signup', Signup),
                                ('/welcome', Welcome),
+                               ('/login', Login),
+                               ('/logout', Logout),
                                ('/blog/?', BlogFront),
                                ('/blog/new', NewPost),
                                ('/blog/([0-9]+)', ShowPost),
