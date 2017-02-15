@@ -114,10 +114,13 @@ class Post(ndb.Model):
     content = ndb.TextProperty(required = True)
     created = ndb.DateTimeProperty(auto_now_add = True)
     last_modified = ndb.DateTimeProperty(auto_now = True)
+    author_key = ndb.KeyProperty(kind=User)
 
     def render(self):
         self._render_text = self.content.replace('\n', '<br>')
         post_id = str(self.key.id())
+        author = self.author_key.get()
+        print author
         return render_str("part-post.html",
                           p = self,
                           post_id=post_id)
@@ -279,6 +282,96 @@ class ShowPost(BaseHandler):
             return
         self.render("page-blog-post.html", p=post)
 
+class EditPost(BlogHandler):
+    def get(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+
+        key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = key.get()
+
+        if not post:
+            self.error(404)
+            return
+
+        author_id = post.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message="This is not your post!"
+            self.render("page-message.html", message=message)
+            return
+
+        self.render("form-edit-post.html", p=post)
+
+    def post(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = post_key.get()
+        author_id = post.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message="This is not your post!"
+            self.render("page-message.html", message=message)
+            return
+        key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = key.get()
+        post.subject = self.request.get('subject')
+        post.content = self.request.get('content')
+
+        if post.subject and post.content:
+            post.put()
+            self.redirect('/blog/%s' % str(post.key.id()))
+        else:
+            error = "subject and content, please!"
+            self.render("form-editpost.html", subject=subject, content=content, error=error)
+
+class DeletePost(BlogHandler):
+    def get(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+
+        key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = key.get()
+        if not post:
+            self.error(404)
+            return
+
+        author_id = post.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message="This is not your post!"
+            self.render("page-message.html", message=message)
+            return
+
+        self.render("form-deletepost.html", post=post)
+
+    def post(self, post_id):
+        if not self.user:
+            self.redirect('/login')
+            return
+
+        key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = key.get()
+
+        author_id = post.author_key.id()
+        login_id = self.user.key.id()
+        if not author_id == login_id:
+            message="This is not your post!"
+            self.render("page-message.html", message=message)
+            return
+
+        if post:
+            post.key.delete()
+            message="Delete succeeed!"
+            self.render("page-message.html", message=message)
+        else:
+            error = "post does not exists!"
+            self.render("page-message.html", message=error)
+
 
 '''
  -----------------------
@@ -293,5 +386,7 @@ app = webapp2.WSGIApplication([('/', TopPage),
                                ('/blog/?', BlogFront),
                                ('/blog/newpost', NewPost),
                                ('/blog/([0-9]+)', ShowPost),
+                               ('/blog/([0-9]+)/edit', EditPost),
+                               ('/blog/([0-9]+)/delete', DeletePost),
                                ],
                               debug=True)
