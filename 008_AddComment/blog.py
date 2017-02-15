@@ -98,7 +98,6 @@ class User(ndb.Model):
                     name = name,
                     pw_hash = pw_hash,
                     email = email)
-
     @classmethod
     def login(cls, name, pw):
         user = cls.get_user_by_name(name)
