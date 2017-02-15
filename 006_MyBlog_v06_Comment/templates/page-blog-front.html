@@ -1,0 +1,13 @@
+{% extends "part-base.html" %}
+
+{% block content %}
+    <a href="/blog" class="main-title">MyLoginBlog</a>
+    <form method="get" action="/blog/newpost">
+        <input type="submit" value="New POST">
+    </form>
+    {% for p in posts %}
+        {{ p.render() | safe }}
+        <br><br>
+    {% endfor %}
+
+{% endblock %}
