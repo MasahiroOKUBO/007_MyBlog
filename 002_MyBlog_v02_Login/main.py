@@ -7,7 +7,6 @@ from string import letters
 
 import webapp2
 import jinja2
-
 from google.appengine.ext import ndb
 
 '''
@@ -16,9 +15,10 @@ from google.appengine.ext import ndb
  -----------------------
 '''
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
-jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir), autoescape = True)
+jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
+                               autoescape = True)
 
-def jinja_render_template(template, **params):
+def render_str(template, **params):
     t = jinja_env.get_template(template)
     return t.render(params)
 
@@ -27,28 +27,28 @@ def jinja_render_template(template, **params):
  hash stuff
  -----------------------
 '''
-salt_cookie = '27!#gserug'
+secret = 'fart'
 
 def make_secure_val(val):
-    return '%s|%s' % (val, hmac.new(salt_cookie, val).hexdigest())
+    return '%s|%s' % (val, hmac.new(secret, val).hexdigest())
 
 def check_secure_val(secure_val):
     val = secure_val.split('|')[0]
     if secure_val == make_secure_val(val):
         return val
 
-def make_random_salt(length=5):
+def make_salt(length = 5):
     return ''.join(random.choice(letters) for x in xrange(length))
 
-def make_pw_hash(name, pw, salt=None):
+def make_pw_hash(name, pw, salt = None):
     if not salt:
-        salt = make_random_salt()
-    hash = hashlib.sha256(name + pw + salt).hexdigest()
-    return '%s,%s' % (salt, hash)
+        salt = make_salt()
+    h = hashlib.sha256(name + pw + salt).hexdigest()
+    return '%s,%s' % (salt, h)
 
-def valid_pw(name, password, hash):
-    salt = hash.split(',')[0]
-    return hash == make_pw_hash(name, password, salt)
+def valid_pw(name, password, h):
+    salt = h.split(',')[0]
+    return h == make_pw_hash(name, password, salt)
 
 '''
  -----------------------
@@ -68,7 +68,6 @@ def valid_password(password):
 def valid_email(email):
     return not email or EMAIL_RE.match(email)
 
-
 '''
  -----------------------
  data stuff
@@ -83,29 +82,27 @@ class User(ndb.Model):
     email = ndb.StringProperty()
 
     @classmethod
-    def get_user_by_id(cls, ID):
-        user = User.get_by_id(ID, parent = users_key())
-        return user
+    def by_id(cls, uid):
+        return User.get_by_id(uid, parent = users_key())
 
     @classmethod
-    def get_user_by_name(cls, name):
-        user = User.query().filter(User.name == name).get()
-        return user
+    def by_name(cls, name):
+        u = User.query().filter(User.name == name).get()
+        return u
 
     @classmethod
     def register(cls, name, pw, email = None):
         pw_hash = make_pw_hash(name, pw)
-        user = User(parent = users_key(),
+        return User(parent = users_key(),
                     name = name,
                     pw_hash = pw_hash,
                     email = email)
-        return user
 
     @classmethod
     def login(cls, name, pw):
-        user = cls.get_user_by_name(name)
-        if user and valid_pw(name, pw, user.pw_hash):
-            return user
+        u = cls.by_name(name)
+        if u and valid_pw(name, pw, u.pw_hash):
+            return u
 
 '''
  -----------------------
@@ -117,7 +114,8 @@ class BaseHandler(webapp2.RequestHandler):
         self.response.out.write(*a, **kw)
 
     def render_str(self, template, **params):
-        return jinja_render_template(template, **params)
+        params['user'] = self.user
+        return render_str(template, **params)
 
     def render(self, template, **kw):
         self.write(self.render_str(template, **kw))
@@ -141,7 +139,7 @@ class BaseHandler(webapp2.RequestHandler):
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         uid = self.read_secure_cookie('user_id')
-        self.user = uid and User.get_user_by_id(int(uid))
+        self.user = uid and User.by_id(int(uid))
 
 class TopPage(BaseHandler):
   def get(self):
@@ -158,8 +156,8 @@ class Signup(BaseHandler):
         self.verify = self.request.get('verify')
         self.email = self.request.get('email')
 
-        params = dict(username=self.username,
-                      email=self.email)
+        params = dict(username = self.username,
+                      email = self.email)
 
         if not valid_username(self.username):
             params['error_username'] = "That's not a valid username."
@@ -177,36 +175,56 @@ class Signup(BaseHandler):
             have_error = True
 
         if have_error:
-            self.render('form-signup.html', **params)
+            self.render('signup-form.html', **params)
         else:
             self.done()
 
     def done(self, *a, **kw):
-        # make sure the user doesn't already exist
-        user = User.get_user_by_name(self.username)
-        if user:
+        #make sure the user doesn't already exist
+        u = User.by_name(self.username)
+        if u:
             msg = 'That user already exists.'
-            self.render('form-signup.html', error_username=msg)
+            self.render('form-signup.html', error_username = msg)
         else:
-            user = User.register(self.username, self.password, self.email)
-            user.put()
-            self.login(user)
-            self.redirect('/welcome')
+            u = User.register(self.username, self.password, self.email)
+            u.put()
+
+            self.login(u)
+            self.redirect('/')
 
 class Welcome(BaseHandler):
     def get(self):
         if self.user:
-            self.render('page-welcome.html', username=self.user.name)
+            self.render('page-welcome.html', username = self.user.name)
         else:
             self.redirect('/signup')
 
-'''
- -----------------------
- Main
- -----------------------
-'''
+class Login(BaseHandler):
+    def get(self):
+        self.render('form-login.html')
+
+    def post(self):
+        username = self.request.get('username')
+        password = self.request.get('password')
+
+        u = User.login(username, password)
+        if u:
+            self.login(u)
+            self.redirect('/')
+        else:
+            msg = 'Invalid login'
+            self.render('form-login.html', error = msg)
+
+class Logout(BaseHandler):
+    def get(self):
+        self.logout()
+        self.redirect('/')
+
+
 app = webapp2.WSGIApplication([('/', TopPage),
                                ('/signup', Signup),
                                ('/welcome', Welcome),
+                               ('/login', Login),
+                               ('/logout', Logout),
                                ],
                               debug=True)
