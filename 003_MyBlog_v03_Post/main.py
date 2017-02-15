@@ -106,7 +106,7 @@ class User(ndb.Model):
 
 
 
-def post_key(namespace = 'default'):
+def posts_key(namespace = 'default'):
     return ndb.Key('posts', namespace)
 
 class Post(ndb.Model):
@@ -243,7 +243,7 @@ class BlogFront(BaseHandler):
     def get(self):
         # posts = Post.all().order('-created')
         posts = Post.query().order(-Post.created)
-        self.render('page-blogfront.html', posts = posts)
+        self.render('page-blog-front.html', posts = posts)
 
 class NewPost(BaseHandler):
     def get(self):
@@ -260,7 +260,7 @@ class NewPost(BaseHandler):
         content = self.request.get('content')
 
         if subject and content:
-            p = Post(parent = post_key(), subject = subject, content = content)
+            p = Post(parent = posts_key(), subject = subject, content = content)
             p.put()
             self.redirect('/blog/%s' % str(p.key.id()))
         else:
@@ -269,14 +269,15 @@ class NewPost(BaseHandler):
 
 class ShowPost(BaseHandler):
     def get(self, post_id):
-        # post_key = ndb.Key('Post', int(post_id), parent=posts_key())
-        # post = post_key.get()
-        post = Post.get_by_id(int(post_id))
-        # post_id = str(post.key.id())
+        # post = Post.get_by_id(int(post_id)) # no work
+        key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = key.get()
+        print post
+
         if not post:
             self.error(404)
             return
-        self.render("page-blog-post.html", p=post, post_id=post_id)
+        self.render("page-blog-post.html", p=post)
 
 
 app = webapp2.WSGIApplication([('/', TopPage),
