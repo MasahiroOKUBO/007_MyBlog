@@ -15,12 +15,14 @@ from google.appengine.ext import ndb
  -----------------------
 '''
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
-jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
-                               autoescape = True)
+jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
+                               autoescape=True)
+
 
 def render_str(template, **params):
     t = jinja_env.get_template(template)
     return t.render(params)
+
 
 '''
  -----------------------
@@ -29,26 +31,32 @@ def render_str(template, **params):
 '''
 secret = 'fart'
 
+
 def make_secure_val(val):
     return '%s|%s' % (val, hmac.new(secret, val).hexdigest())
+
 
 def check_secure_val(secure_val):
     val = secure_val.split('|')[0]
     if secure_val == make_secure_val(val):
         return val
 
-def make_salt(length = 5):
+
+def make_salt(length=5):
     return ''.join(random.choice(letters) for x in xrange(length))
 
-def make_pw_hash(name, pw, salt = None):
+
+def make_pw_hash(name, pw, salt=None):
     if not salt:
         salt = make_salt()
     h = hashlib.sha256(name + pw + salt).hexdigest()
     return '%s,%s' % (salt, h)
 
+
 def valid_pw(name, password, h):
     salt = h.split(',')[0]
     return h == make_pw_hash(name, password, salt)
+
 
 '''
  -----------------------
@@ -57,33 +65,40 @@ def valid_pw(name, password, h):
 '''
 USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
 PASS_RE = re.compile(r"^.{3,20}$")
-EMAIL_RE  = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
+EMAIL_RE = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
+
 
 def valid_username(username):
     return username and USER_RE.match(username)
 
+
 def valid_password(password):
     return password and PASS_RE.match(password)
 
+
 def valid_email(email):
     return not email or EMAIL_RE.match(email)
+
 
 '''
  -----------------------
  data stuff
  -----------------------
 '''
-def users_key(namespace = 'default'):
+
+
+def users_key(namespace='default'):
     return ndb.Key('users', namespace)
 
+
 class User(ndb.Model):
-    name = ndb.StringProperty(required = True)
-    pw_hash = ndb.StringProperty(required = True)
+    name = ndb.StringProperty(required=True)
+    pw_hash = ndb.StringProperty(required=True)
     email = ndb.StringProperty()
 
     @classmethod
     def by_id(cls, uid):
-        return User.get_by_id(uid, parent = users_key())
+        return User.get_by_id(uid, parent=users_key())
 
     @classmethod
     def by_name(cls, name):
@@ -91,12 +106,12 @@ class User(ndb.Model):
         return u
 
     @classmethod
-    def register(cls, name, pw, email = None):
+    def register(cls, name, pw, email=None):
         pw_hash = make_pw_hash(name, pw)
-        return User(parent = users_key(),
-                    name = name,
-                    pw_hash = pw_hash,
-                    email = email)
+        return User(parent=users_key(),
+                    name=name,
+                    pw_hash=pw_hash,
+                    email=email)
 
     @classmethod
     def login(cls, name, pw):
@@ -104,14 +119,16 @@ class User(ndb.Model):
         if u and valid_pw(name, pw, u.pw_hash):
             return u
 
-def posts_key(namespace = 'default'):
+
+def posts_key(namespace='default'):
     return ndb.Key('posts', namespace)
 
+
 class Post(ndb.Model):
-    subject = ndb.StringProperty(required = True)
-    content = ndb.TextProperty(required = True)
-    created = ndb.DateTimeProperty(auto_now_add = True)
-    last_modified = ndb.DateTimeProperty(auto_now = True)
+    subject = ndb.StringProperty(required=True)
+    content = ndb.TextProperty(required=True)
+    created = ndb.DateTimeProperty(auto_now_add=True)
+    last_modified = ndb.DateTimeProperty(auto_now=True)
     author_key = ndb.KeyProperty(kind=User)
 
     def render(self):
@@ -122,23 +139,28 @@ class Post(ndb.Model):
         author_name = author.name
         votes = Vote.query().filter(Vote.post_key == self.key).count()
         return render_str("part-post.html",
-                          p = self,
+                          p=self,
                           post_id=post_id,
                           author=author_name,
                           votes=votes)
 
-def votes_key(namespace ='default'):
+
+def votes_key(namespace='default'):
     return ndb.Key('votes', namespace)
+
 
 class Vote(ndb.Model):
     voter_key = ndb.KeyProperty(kind=User)
     post_key = ndb.KeyProperty(kind=Post)
+
 
 '''
  -----------------------
  handler
  -----------------------
 '''
+
+
 class BaseHandler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
@@ -171,9 +193,11 @@ class BaseHandler(webapp2.RequestHandler):
         uid = self.read_secure_cookie('user_id')
         self.user = uid and User.by_id(int(uid))
 
+
 class TopPage(BaseHandler):
-  def get(self):
-      self.render('page-top.html')
+    def get(self):
+        self.render('page-top.html')
+
 
 class Signup(BaseHandler):
     def get(self):
@@ -186,8 +210,8 @@ class Signup(BaseHandler):
         self.verify = self.request.get('verify')
         self.email = self.request.get('email')
 
-        params = dict(username = self.username,
-                      email = self.email)
+        params = dict(username=self.username,
+                      email=self.email)
 
         if not valid_username(self.username):
             params['error_username'] = "That's not a valid username."
@@ -210,11 +234,11 @@ class Signup(BaseHandler):
             self.done()
 
     def done(self, *a, **kw):
-        #make sure the user doesn't already exist
+        # make sure the user doesn't already exist
         u = User.by_name(self.username)
         if u:
             msg = 'That user already exists.'
-            self.render('form-signup.html', error_username = msg)
+            self.render('form-signup.html', error_username=msg)
         else:
             u = User.register(self.username, self.password, self.email)
             u.put()
@@ -222,12 +246,14 @@ class Signup(BaseHandler):
             self.login(u)
             self.redirect('/')
 
+
 class Welcome(BaseHandler):
     def get(self):
         if self.user:
-            self.render('page-welcome.html', username = self.user.name)
+            self.render('page-welcome.html', username=self.user.name)
         else:
             self.redirect('/signup')
+
 
 class Login(BaseHandler):
     def get(self):
@@ -243,18 +269,21 @@ class Login(BaseHandler):
             self.redirect('/')
         else:
             msg = 'Invalid login'
-            self.render('form-login.html', error = msg)
+            self.render('form-login.html', error=msg)
+
 
 class Logout(BaseHandler):
     def get(self):
         self.logout()
         self.redirect('/')
 
+
 class BlogFront(BaseHandler):
     def get(self):
         # posts = Post.all().order('-created')
         posts = Post.query().order(-Post.created)
-        self.render('page-blog-front.html', posts = posts)
+        self.render('page-blog-front.html', posts=posts)
+
 
 class NewPost(BaseHandler):
     def get(self):
@@ -279,6 +308,7 @@ class NewPost(BaseHandler):
             error = "subject and content, please!"
             self.render("form-new-post.html", subject=subject, content=content, error=error)
 
+
 class ShowPost(BaseHandler):
     def get(self, post_id):
         # post = Post.get_by_id(int(post_id)) # no work
@@ -290,6 +320,7 @@ class ShowPost(BaseHandler):
             self.error(404)
             return
         self.render("page-blog-post.html", p=post, post_id=post_id)
+
 
 class EditPost(BaseHandler):
     def get(self, post_id):
@@ -310,7 +341,7 @@ class EditPost(BaseHandler):
         print author_id
         print login_id
         if not author_id == login_id:
-            message="This is not your post!"
+            message = "This is not your post!"
             self.render("page-message.html", message=message)
             return
 
@@ -325,7 +356,7 @@ class EditPost(BaseHandler):
         author_id = post.author_key.id()
         login_id = self.user.key.id()
         if not author_id == login_id:
-            message="This is not your post!"
+            message = "This is not your post!"
             self.render("page-message.html", message=message)
             return
         key = ndb.Key('Post', int(post_id), parent=posts_key())
@@ -339,6 +370,7 @@ class EditPost(BaseHandler):
         else:
             error = "subject and content, please!"
             self.render("form-editpost.html", subject=subject, content=content, error=error)
+
 
 class DeletePost(BaseHandler):
     def get(self, post_id):
@@ -355,7 +387,7 @@ class DeletePost(BaseHandler):
         author_id = post.author_key.id()
         login_id = self.user.key.id()
         if not author_id == login_id:
-            message="This is not your post!"
+            message = "This is not your post!"
             self.render("page-message.html", message=message)
             return
 
@@ -372,17 +404,18 @@ class DeletePost(BaseHandler):
         author_id = post.author_key.id()
         login_id = self.user.key.id()
         if not author_id == login_id:
-            message="This is not your post!"
+            message = "This is not your post!"
             self.render("page-message.html", message=message)
             return
 
         if post:
             post.key.delete()
-            message="Delete succeeed!"
+            message = "Delete succeeed!"
             self.render("page-message.html", message=message)
         else:
             error = "post does not exists!"
             self.render("page-message.html", message=error)
+
 
 class NewVote(BaseHandler):
     def post(self, post_id):
@@ -410,6 +443,7 @@ class NewVote(BaseHandler):
             vote.put()
             message = "vote suceeded!"
             self.render("page-message.html", message=message)
+
 
 class DeleteVote(BaseHandler):
     def post(self, post_id):
