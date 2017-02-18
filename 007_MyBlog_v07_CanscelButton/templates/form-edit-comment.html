@@ -1,0 +1,18 @@
+{% extends "part-base.html" %}
+
+{% block content %}
+    <a href="/blog" class="main-title">MyLoginBlog</a>
+    <h2>edit comment</h2>
+    <form method="post">
+        <label>
+            <div>subject</div>
+            <input type="text" name="subject" value="{{ comment.subject }}">
+        </label>
+        <label>
+            <div>blog</div>
+            <textarea name="content">{{ comment.content }}</textarea>
+        </label>
+        <div class="error">{{ error }}</div>
+        <input type="submit" value="update">
+    </form>
+{% endblock %}
