@@ -9,6 +9,11 @@ import webapp2
 import jinja2
 from google.appengine.ext import ndb
 
+from models import User, users_key
+from models import Vote, votes_key
+from models import Post, posts_key
+from models import Comment, comments_key
+
 '''
  -----------------------
  jinja stuff
@@ -42,20 +47,20 @@ def check_secure_val(secure_val):
         return val
 
 
-def make_salt(length=5):
-    return ''.join(random.choice(letters) for x in xrange(length))
-
-
-def make_pw_hash(name, pw, salt=None):
-    if not salt:
-        salt = make_salt()
-    h = hashlib.sha256(name + pw + salt).hexdigest()
-    return '%s,%s' % (salt, h)
-
-
-def valid_pw(name, password, h):
-    salt = h.split(',')[0]
-    return h == make_pw_hash(name, password, salt)
+# def make_salt(length=5):
+#     return ''.join(random.choice(letters) for x in xrange(length))
+#
+#
+# def make_pw_hash(name, pw, salt=None):
+#     if not salt:
+#         salt = make_salt()
+#     h = hashlib.sha256(name + pw + salt).hexdigest()
+#     return '%s,%s' % (salt, h)
+#
+#
+# def valid_pw(name, password, h):
+#     salt = h.split(',')[0]
+#     return h == make_pw_hash(name, password, salt)
 
 
 '''
@@ -87,98 +92,98 @@ def valid_email(email):
 '''
 
 
-def users_key(namespace='default'):
-    return ndb.Key('users', namespace)
+# def users_key(namespace='default'):
+#     return ndb.Key('users', namespace)
+#
+#
+# class User(ndb.Model):
+#     name = ndb.StringProperty(required=True)
+#     pw_hash = ndb.StringProperty(required=True)
+#     email = ndb.StringProperty()
+#
+#     @classmethod
+#     def by_id(cls, uid):
+#         return User.get_by_id(uid, parent=users_key())
+#
+#     @classmethod
+#     def by_name(cls, name):
+#         u = User.query().filter(User.name == name).get()
+#         return u
+#
+#     @classmethod
+#     def register(cls, name, pw, email=None):
+#         pw_hash = make_pw_hash(name, pw)
+#         return User(parent=users_key(),
+#                     name=name,
+#                     pw_hash=pw_hash,
+#                     email=email)
+#
+#     @classmethod
+#     def login(cls, name, pw):
+#         u = cls.by_name(name)
+#         if u and valid_pw(name, pw, u.pw_hash):
+#             return u
 
 
-class User(ndb.Model):
-    name = ndb.StringProperty(required=True)
-    pw_hash = ndb.StringProperty(required=True)
-    email = ndb.StringProperty()
-
-    @classmethod
-    def by_id(cls, uid):
-        return User.get_by_id(uid, parent=users_key())
-
-    @classmethod
-    def by_name(cls, name):
-        u = User.query().filter(User.name == name).get()
-        return u
-
-    @classmethod
-    def register(cls, name, pw, email=None):
-        pw_hash = make_pw_hash(name, pw)
-        return User(parent=users_key(),
-                    name=name,
-                    pw_hash=pw_hash,
-                    email=email)
-
-    @classmethod
-    def login(cls, name, pw):
-        u = cls.by_name(name)
-        if u and valid_pw(name, pw, u.pw_hash):
-            return u
+# def posts_key(namespace='default'):
+#     return ndb.Key('posts', namespace)
+#
+#
+# class Post(ndb.Model):
+#     subject = ndb.StringProperty(required=True)
+#     content = ndb.TextProperty(required=True)
+#     created = ndb.DateTimeProperty(auto_now_add=True)
+#     last_modified = ndb.DateTimeProperty(auto_now=True)
+#     author_key = ndb.KeyProperty(kind=User)
+#
+#     def render(self):
+#         self._render_text = self.content.replace('\n', '<br>')
+#         post_id = str(self.key.id())
+#         author_id = self.author_key.id()
+#         author = User.by_id(author_id)
+#         author_name = author.name
+#         votes = Vote.query().filter(Vote.post_key == self.key).count()
+#         return render_str("part-post.html",
+#                           p=self,
+#                           post_id=post_id,
+#                           author=author_name,
+#                           likes=votes)
 
 
-def posts_key(namespace='default'):
-    return ndb.Key('posts', namespace)
+# def votes_key(namespace='default'):
+#     return ndb.Key('votes', namespace)
+#
+#
+# class Vote(ndb.Model):
+#     voter_key = ndb.KeyProperty(kind=User)
+#     post_key = ndb.KeyProperty(kind=Post)
 
 
-class Post(ndb.Model):
-    subject = ndb.StringProperty(required=True)
-    content = ndb.TextProperty(required=True)
-    created = ndb.DateTimeProperty(auto_now_add=True)
-    last_modified = ndb.DateTimeProperty(auto_now=True)
-    author_key = ndb.KeyProperty(kind=User)
-
-    def render(self):
-        self._render_text = self.content.replace('\n', '<br>')
-        post_id = str(self.key.id())
-        author_id = self.author_key.id()
-        author = User.by_id(author_id)
-        author_name = author.name
-        votes = Vote.query().filter(Vote.post_key == self.key).count()
-        return render_str("part-post.html",
-                          p=self,
-                          post_id=post_id,
-                          author=author_name,
-                          likes=votes)
-
-
-def votes_key(namespace='default'):
-    return ndb.Key('votes', namespace)
-
-
-class Vote(ndb.Model):
-    voter_key = ndb.KeyProperty(kind=User)
-    post_key = ndb.KeyProperty(kind=Post)
-
-
-def comments_key(namespace='default'):
-    return ndb.Key('comments', namespace)
-
-
-class Comment(ndb.Model):
-    subject = ndb.StringProperty(required=True)
-    content = ndb.TextProperty(required=True)
-    created = ndb.DateTimeProperty(auto_now_add=True)
-    last_modified = ndb.DateTimeProperty(auto_now=True)
-    author_key = ndb.KeyProperty(kind=User)
-    post_key = ndb.KeyProperty(kind=Post)
-
-    def render(self):
-        self._render_text = self.content.replace('\n', '<br>')
-        author_id = self.author_key.id()
-        author = User.by_id(author_id)
-        author_name = author.name
-        post_id = self.post_key.id()
-        comment_id = self.key.id()
-
-        return render_str("part-comment.html",
-                          c=self,
-                          author=author_name,
-                          post_id=post_id,
-                          comment_id=comment_id)
+# def comments_key(namespace='default'):
+#     return ndb.Key('comments', namespace)
+#
+#
+# class Comment(ndb.Model):
+#     subject = ndb.StringProperty(required=True)
+#     content = ndb.TextProperty(required=True)
+#     created = ndb.DateTimeProperty(auto_now_add=True)
+#     last_modified = ndb.DateTimeProperty(auto_now=True)
+#     author_key = ndb.KeyProperty(kind=User)
+#     post_key = ndb.KeyProperty(kind=Post)
+#
+#     def render(self):
+#         self._render_text = self.content.replace('\n', '<br>')
+#         author_id = self.author_key.id()
+#         author = User.by_id(author_id)
+#         author_name = author.name
+#         post_id = self.post_key.id()
+#         comment_id = self.key.id()
+#
+#         return render_str("part-comment.html",
+#                           c=self,
+#                           author=author_name,
+#                           post_id=post_id,
+#                           comment_id=comment_id)
 
 
 '''
@@ -401,9 +406,14 @@ class EditPost(BaseHandler):
         if post.subject and post.content:
             post.put()
             self.redirect('/blog/%s/show' % str(post.key.id()))
+
         else:
             error = "subject and content, please!"
-            self.render("form-editpost.html", subject=subject, content=content, error=error)
+            self.render("form-edit-post.html",
+                        subject=post.subject,
+                        content=post.content,
+                        error=error)
+            return
 
 
 class DeletePost(BaseHandler):
