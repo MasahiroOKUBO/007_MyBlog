@@ -6,7 +6,7 @@
         <input type="submit" value="New POST">
     </form>
     {% for p in posts %}
-        {{ render_post(p) | safe }}
+        {{ p.render() | safe }}
         <br><br>
     {% endfor %}
 

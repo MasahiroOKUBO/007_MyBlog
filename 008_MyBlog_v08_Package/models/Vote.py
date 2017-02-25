@@ -1,5 +1,6 @@
 from google.appengine.ext import ndb
-from models import User
+import models.User
+import Post
 
 
 def votes_key(namespace='default'):
