@@ -1,0 +1,19 @@
+{% extends "part-base.html" %}
+
+{% block content %}
+    <h2>
+        NewComment or <a href="/blog">Cancel</a></h2>
+    </h2>
+    <form method="post">
+        <label>
+            <div>subject</div>
+            <input type="text" name="subject" value="{{ subject }}">
+        </label>
+        <label>
+            <div>your coment</div>
+            <textarea name="content">{{ content }}</textarea>
+        </label>
+        <div class="error">{{ error }}</div>
+        <input type="submit">
+    </form>
+{% endblock %}
