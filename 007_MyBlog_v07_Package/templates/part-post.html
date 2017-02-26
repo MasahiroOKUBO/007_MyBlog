@@ -1,18 +1,18 @@
 <div class="post">
   <div class="post-heading">
     <div class="post-title">
-      <a href="/blog/{{ post_id }}/show"> {{ p.subject }} </a>
+      <a href="/blog/{{ post_id }}/show"> {{ subject }} </a>
     </div>
     <div class="post-date">
         {{ likes }} people like this.
         <br>
         {{ author }} write this post.
         <br>
-        {{p.created.strftime("%b %d, %Y")}}
+        {{ created }}
     </div>
   </div>
 
   <div class="post-content">
-    {{p._render_text | safe}}
+    {{render_content | safe}}
   </div>
 </div>

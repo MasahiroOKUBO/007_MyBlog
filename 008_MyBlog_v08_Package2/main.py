@@ -9,9 +9,8 @@ import webapp2
 import jinja2
 from google.appengine.ext import ndb
 
-import models.User
-# from models import Post, posts_key
-# Vote, Post, Comment, users_key, votes_key, posts_key, comments_key
+from models import User, users_key
+from models import Post, posts_key, Vote, votes_key, Comment, comments_key
 
 '''
  -----------------------
@@ -122,67 +121,67 @@ def valid_email(email):
 #         u = cls.by_name(name)
 #         if u and valid_pw(name, pw, u.pw_hash):
 #             return u
+#
 
-
-def posts_key(namespace='default'):
-    return ndb.Key('posts', namespace)
-
-
-class Post(ndb.Model):
-    subject = ndb.StringProperty(required=True)
-    content = ndb.TextProperty(required=True)
-    created = ndb.DateTimeProperty(auto_now_add=True)
-    last_modified = ndb.DateTimeProperty(auto_now=True)
-    author_key = ndb.KeyProperty(kind=models.User)
-
-    def render(self):
-        self._render_text = self.content.replace('\n', '<br>')
-        post_id = str(self.key.id())
-        author_id = self.author_key.id()
-        author = models.User.by_id(author_id)
-        author_name = author.name
-        votes = Vote.query().filter(Vote.post_key == self.key).count()
-        return render_str("part-post.html",
-                          p=self,
-                          post_id=post_id,
-                          author=author_name,
-                          likes=votes)
-
-
-def votes_key(namespace='default'):
-    return ndb.Key('votes', namespace)
-
-
-class Vote(ndb.Model):
-    voter_key = ndb.KeyProperty(kind=models.User)
-    post_key = ndb.KeyProperty(kind=Post)
-
-
-def comments_key(namespace='default'):
-    return ndb.Key('comments', namespace)
-
-
-class Comment(ndb.Model):
-    subject = ndb.StringProperty(required=True)
-    content = ndb.TextProperty(required=True)
-    created = ndb.DateTimeProperty(auto_now_add=True)
-    last_modified = ndb.DateTimeProperty(auto_now=True)
-    author_key = ndb.KeyProperty(kind=models.User)
-    post_key = ndb.KeyProperty(kind=Post)
-
-    def render(self):
-        self._render_text = self.content.replace('\n', '<br>')
-        author_id = self.author_key.id()
-        author = models.User.by_id(author_id)
-        author_name = author.name
-        post_id = self.post_key.id()
-        comment_id = self.key.id()
-
-        return render_str("part-comment.html",
-                          c=self,
-                          author=author_name,
-                          post_id=post_id,
-                          comment_id=comment_id)
+# def posts_key(namespace='default'):
+#     return ndb.Key('posts', namespace)
+#
+#
+# class Post(ndb.Model):
+#     subject = ndb.StringProperty(required=True)
+#     content = ndb.TextProperty(required=True)
+#     created = ndb.DateTimeProperty(auto_now_add=True)
+#     last_modified = ndb.DateTimeProperty(auto_now=True)
+#     author_key = ndb.KeyProperty(kind=User)
+#
+#     def render(self):
+#         self._render_text = self.content.replace('\n', '<br>')
+#         post_id = str(self.key.id())
+#         author_id = self.author_key.id()
+#         author = User.by_id(author_id)
+#         author_name = author.name
+#         votes = Vote.query().filter(Vote.post_key == self.key).count()
+#         return render_str("part-post.html",
+#                           p=self,
+#                           post_id=post_id,
+#                           author=author_name,
+#                           likes=votes)
+#
+#
+# def votes_key(namespace='default'):
+#     return ndb.Key('votes', namespace)
+#
+#
+# class Vote(ndb.Model):
+#     voter_key = ndb.KeyProperty(kind=User)
+#     post_key = ndb.KeyProperty(kind=Post)
+#
+#
+# def comments_key(namespace='default'):
+#     return ndb.Key('comments', namespace)
+#
+#
+# class Comment(ndb.Model):
+#     subject = ndb.StringProperty(required=True)
+#     content = ndb.TextProperty(required=True)
+#     created = ndb.DateTimeProperty(auto_now_add=True)
+#     last_modified = ndb.DateTimeProperty(auto_now=True)
+#     author_key = ndb.KeyProperty(kind=User)
+#     post_key = ndb.KeyProperty(kind=Post)
+#
+#     def render(self):
+#         self._render_text = self.content.replace('\n', '<br>')
+#         author_id = self.author_key.id()
+#         author = User.by_id(author_id)
+#         author_name = author.name
+#         post_id = self.post_key.id()
+#         comment_id = self.key.id()
+#
+#         return render_str("part-comment.html",
+#                           c=self,
+#                           author=author_name,
+#                           post_id=post_id,
+#                           comment_id=comment_id)
 
 
 '''
@@ -222,7 +221,7 @@ class BaseHandler(webapp2.RequestHandler):
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         uid = self.read_secure_cookie('user_id')
-        self.user = uid and models.User.by_id(int(uid))
+        self.user = uid and User.by_id(int(uid))
 
 
 class TopPage(BaseHandler):
@@ -266,12 +265,12 @@ class Signup(BaseHandler):
 
     def done(self, *a, **kw):
         # make sure the user doesn't already exist
-        u = models.User.by_name(self.username)
+        u = User.by_name(self.username)
         if u:
             msg = 'That user already exists.'
             self.render('form-signup.html', error_username=msg)
         else:
-            u = models.User.register(self.username, self.password, self.email)
+            u = User.register(self.username, self.password, self.email)
             u.put()
 
             self.login(u)
@@ -294,7 +293,7 @@ class Login(BaseHandler):
         username = self.request.get('username')
         password = self.request.get('password')
 
-        u = models.User.login(username, password)
+        u = User.login(username, password)
         if u:
             self.login(u)
             self.redirect('/')
@@ -405,14 +404,9 @@ class EditPost(BaseHandler):
         if post.subject and post.content:
             post.put()
             self.redirect('/blog/%s/show' % str(post.key.id()))
-
         else:
             error = "subject and content, please!"
-            self.render("form-edit-post.html",
-                        subject=post.subject,
-                        content=post.content,
-                        error=error)
-            return
+            self.render("form-editpost.html", subject=subject, content=content, error=error)
 
 
 class DeletePost(BaseHandler):
