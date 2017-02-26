@@ -6,8 +6,10 @@ class NewPost(BaseHandler):
     def get(self):
         if self.user:
             self.render("form-new-post.html")
+            return
         else:
             self.redirect("/login")
+            return
 
     def post(self):
         if not self.user:

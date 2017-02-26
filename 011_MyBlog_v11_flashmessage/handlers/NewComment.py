@@ -7,12 +7,15 @@ class NewComment(BaseHandler):
     def get(self, post_id):
         if not self.user:
             self.redirect("/login?redirectUrl=/blog/%s/comment/new" % post_id)
+            return
         else:
             self.render("form-new-comment.html")
+            return
 
     def post(self, post_id):
         if not self.user:
             self.redirect('/blog')
+            return
 
         subject = self.request.get('subject')
         content = self.request.get('content')

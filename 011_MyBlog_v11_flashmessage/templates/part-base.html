@@ -18,6 +18,9 @@
     {% endif %}
 </div>
 <a href="/" class="main-title"/>My Service</a>
+<div id="flash_message">
+    {{ flash_message }}
+</div>
 <div id="content">
     {% block content %}
     {% endblock %}

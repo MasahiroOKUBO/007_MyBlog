@@ -25,10 +25,10 @@ def valid_email(email):
     return not email or EMAIL_RE.match(email)
 
 
-
 class Signup(BaseHandler):
     def get(self):
         self.render("form-signup.html")
+        return
 
     def post(self):
         have_error = False
@@ -43,14 +43,12 @@ class Signup(BaseHandler):
         if not valid_username(self.username):
             params['error_username'] = "That's not a valid username."
             have_error = True
-
         if not valid_password(self.password):
             params['error_password'] = "That wasn't a valid password."
             have_error = True
         elif self.password != self.verify:
             params['error_verify'] = "Your passwords didn't match."
             have_error = True
-
         if not valid_email(self.email):
             params['error_email'] = "That's not a valid email."
             have_error = True
@@ -60,6 +58,7 @@ class Signup(BaseHandler):
             return
         else:
             self.done()
+            return
 
     def done(self, *a, **kw):
         u = User.by_name(self.username)
@@ -70,7 +69,6 @@ class Signup(BaseHandler):
         else:
             u = User.register(self.username, self.password, self.email)
             u.put()
-
             self.login(u)
             self.redirect('/')
             return
