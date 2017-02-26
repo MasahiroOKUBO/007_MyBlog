@@ -16,13 +16,18 @@ class NewComment(BaseHandler):
         if not self.user:
             self.redirect('/blog')
             return
-
         subject = self.request.get('subject')
         content = self.request.get('content')
         author_key = self.user.key
         post_key = ndb.Key('Post', int(post_id), parent=posts_key())
-
-        if content:
+        if not subject and content:
+            error = "subject & content, please!"
+            self.render("form-new-comment.html",
+                        subject=subject,
+                        content=content,
+                        error=error)
+            return
+        else:
             comment = Comment(parent=comments_key(),
                               subject=subject,
                               content=content,
@@ -31,7 +36,4 @@ class NewComment(BaseHandler):
             comment.put()
             self.redirect('/blog')
             return
-        else:
-            error = "subject & content, please!"
-            self.render("form-new-comment.html", subject=subject, content=content, error=error)
-            return
+

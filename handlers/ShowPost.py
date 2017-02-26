@@ -7,7 +7,7 @@ class ShowPost(BaseHandler):
         post_key = ndb.Key('Post', int(post_id), parent=posts_key())
         post = post_key.get()
         comments = Comment.query() \
-            .filter(Comment.post_key == key) \
+            .filter(Comment.post_key == post_key) \
             .order(-Comment.created) \
             .fetch(10)
         if not post:

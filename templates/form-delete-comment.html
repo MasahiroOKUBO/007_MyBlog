@@ -6,5 +6,8 @@
     <form method="post">
         <input type="submit" value="delete">
     </form>
+    <div class="error">
+        {{ error }}
+    </div>
     {{ c.render() | safe }}
 {% endblock %}

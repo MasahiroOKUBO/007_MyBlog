@@ -14,7 +14,9 @@
             <div>blog</div>
             <textarea name="content">{{ comment.content }}</textarea>
         </label>
-        <div class="error">{{ error }}</div>
         <input type="submit" value="update">
     </form>
+    <div class="error">
+        {{ error }}
+    </div>
 {% endblock %}
