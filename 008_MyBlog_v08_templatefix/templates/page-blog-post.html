@@ -1,9 +1,9 @@
 {% extends "part-base.html" %}
 
 {% block content %}
-    <a href="/blog" class="main-title">
-        MyBlog
-    </a>
+    <h2>
+        <a href="/blog">MyBlog</a>
+    </h2>
     <form method="get" action="/blog/{{ post_id }}/edit"><input type="submit" value="EDIT"></form>
     <form method="get" action="/blog/{{ post_id }}/delete"><input type="submit" value="DELETE"></form>
     <form method="post" action="/blog/{{ post_id }}/vote"><input type="submit" value="VOTE"></form>

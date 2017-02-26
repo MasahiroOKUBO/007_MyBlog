@@ -1,0 +1,18 @@
+{% extends "part-base.html" %}
+
+{% block content %}
+    <h2>
+        EditPost or <a href="/blog">Cancel</a>
+    </h2>
+    <form method="post">
+        <label>
+            <div>subject</div>
+            <input type="text" name="subject" value="{{ p.subject }}">
+        </label>
+        <label>
+            <div>blog</div>
+            <textarea name="content">{{ p.content }}</textarea>
+        </label>
+        <input type="submit" value="update">
+    </form>
+{% endblock %}

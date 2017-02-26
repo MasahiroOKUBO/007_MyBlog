@@ -1,0 +1,10 @@
+{% extends "part-base.html" %}
+
+{% block content %}
+    <h2>Delete comment or <a href="/blog">Cancel</a></h2>
+
+    <form method="post">
+        <input type="submit" value="delete">
+    </form>
+    {{ c.render() | safe }}
+{% endblock %}

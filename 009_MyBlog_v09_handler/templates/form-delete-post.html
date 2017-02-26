@@ -1,13 +1,10 @@
 {% extends "part-base.html" %}
 
 {% block content %}
-    <a href="/blog" class="main-title">
-        MyLoginBlog
-    </a>
-    <h2>Delete comment</h2>
+    <h2>Delete post</h2>
 
     <form method="post">
         <input type="submit" value="delete">
     </form>
-    {{ c.render() | safe }}
+    {{p.render() | safe}}
 {% endblock %}
