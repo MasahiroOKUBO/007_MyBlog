@@ -1,0 +1,18 @@
+{% extends "part-base.html" %}
+
+{% block content %}
+    <h2>
+        <a href="/blog">MyBlog</a>
+    </h2>
+    <form method="get" action="/blog/{{ post_id }}/edit"><input type="submit" value="EDIT"></form>
+    <form method="get" action="/blog/{{ post_id }}/delete"><input type="submit" value="DELETE"></form>
+    <form method="post" action="/blog/{{ post_id }}/vote"><input type="submit" value="VOTE"></form>
+    <form method="post" action="/blog/{{ post_id }}/veto"><input type="submit" value="VETO"></form>
+    <form method="get" action="/blog/{{ post_id }}/comment/new"><input type="submit" value="COMMENT"></form>
+    {{ p.render() | safe }}
+    <br><br>
+    {% for comment in comments %}
+        {{ comment.render() | safe }}
+        <br><br>
+    {% endfor %}
+{% endblock %}
