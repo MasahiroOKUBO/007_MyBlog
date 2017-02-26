@@ -1,4 +1,4 @@
-from models import Post, comments_key, Comment
+from models import Post, comments_key, Comment, posts_key
 from handlers import BaseHandler
 from google.appengine.ext import ndb
 

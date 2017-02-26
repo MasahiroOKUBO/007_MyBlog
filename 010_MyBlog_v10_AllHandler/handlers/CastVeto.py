@@ -8,11 +8,14 @@ class CastVeto(BaseHandler):
         if not self.user:
             self.redirect('/login')
             return
-
         post_key = ndb.Key('Post', int(post_id), parent=posts_key())
         post = post_key.get()
-
         voter_key = self.user.key
+
+        if post.author_key == voter_key:
+            message = "Can not veto yourselft!"
+            self.redirect('/blog')
+            return
 
         old_vote = Vote.query() \
             .filter(Vote.voter_key == voter_key) \
@@ -21,10 +24,10 @@ class CastVeto(BaseHandler):
 
         if not old_vote:
             message = "you have not voted yet!"
-            self.render("page-message.html", message=message)
+            self.redirect('/blog')
             return
         else:
             old_vote.key.delete()
             message = "delete vote, succeed!"
-            self.render("page-message.html", message=message)
+            self.redirect('/blog')
             return

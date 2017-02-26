@@ -1,3 +1,4 @@
+from BaseHandler import BaseHandler
 from TopPage import TopPage
 from Signup import Signup
 from Welcome import Welcome
