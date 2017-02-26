@@ -9,6 +9,8 @@ import webapp2
 import jinja2
 from google.appengine.ext import ndb
 
+from models import User, users_key, Post, posts_key, Vote, votes_key, Comment, comments_key
+
 '''
  -----------------------
  jinja stuff
@@ -17,7 +19,6 @@ from google.appengine.ext import ndb
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
                                autoescape=True)
-
 
 def render_str(template, **params):
     t = jinja_env.get_template(template)
@@ -85,40 +86,6 @@ def valid_email(email):
  data stuff
  -----------------------
 '''
-
-
-def users_key(namespace='default'):
-    return ndb.Key('users', namespace)
-
-
-class User(ndb.Model):
-    name = ndb.StringProperty(required=True)
-    pw_hash = ndb.StringProperty(required=True)
-    email = ndb.StringProperty()
-
-    @classmethod
-    def by_id(cls, uid):
-        return User.get_by_id(uid, parent=users_key())
-
-    @classmethod
-    def by_name(cls, name):
-        u = User.query().filter(User.name == name).get()
-        return u
-
-    @classmethod
-    def register(cls, name, pw, email=None):
-        pw_hash = make_pw_hash(name, pw)
-        return User(parent=users_key(),
-                    name=name,
-                    pw_hash=pw_hash,
-                    email=email)
-
-    @classmethod
-    def login(cls, name, pw):
-        u = cls.by_name(name)
-        if u and valid_pw(name, pw, u.pw_hash):
-            return u
-
 
 
 

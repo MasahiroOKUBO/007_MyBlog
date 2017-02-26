@@ -1,6 +1,4 @@
 from google.appengine.ext import ndb
-import models.User
-import Vote
 import jinja2
 import os
 
@@ -27,7 +25,7 @@ class Post(ndb.Model):
     author_key = ndb.KeyProperty(kind=User)
 
 
-    def render_post(post):
+    def render(post):
         post._render_text = post.content.replace('\n', '<br>')
         post_id = str(post.key.id())
         author_id = post.author_key.id()
