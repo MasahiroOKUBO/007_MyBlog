@@ -1,25 +1,20 @@
 {% extends "part-base.html" %}
 
 {% block content %}
-    <style type="text/css">
-        .label {
-            text-align: right
-        }
-
-        .error {
-            color: red
-        }
-    </style>
     <h2>Signup</h2>
     <form method="post">
         Username:<br>
-        <input type="text" name="username" value="{{ username }}">{{ error_username }}<br>
+        <input type="text" name="username" value="{{ username }}">
+        <span class="error-message">{{ error_username }}</span><br>
         Password:<br>
-        <input type="password" name="password" value="">{{ error_password }}<br>
+        <input type="password" name="password" value="">
+        <span class="error-message">{{ error_password }}</span><br>
         Verify Password:<br>
-        <input type="password" name="verify" value="">{{ error_verify }}<br>
+        <input type="password" name="verify" value="">
+        <span class="error-message">{{ error_verify }}</span><br>
         Email (optional):<br>
-        <input type="text" name="email" value="{{ email }}">{{ error_email }}<br>
+        <input type="text" name="email" value="{{ email }}">
+        <span class="error-message">{{ error_email }}</span><br>
         <input type="submit">
     </form>
 {% endblock %}

@@ -8,16 +8,13 @@ class EditPost(BaseHandler):
         if not self.user:
             self.redirect('/login')
             return
-        key = ndb.Key('Post', int(post_id), parent=posts_key())
-        post = key.get()
+        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = post_key.get()
         if not post:
             self.error(404)
             return
-        print post.author_key
         author_id = post.author_key.id()
         login_id = self.user.key.id()
-        print author_id
-        print login_id
         if not author_id == login_id:
             message = "This is not your post!"
             self.render("page-message.html", message=message)
@@ -37,8 +34,6 @@ class EditPost(BaseHandler):
             message = "This is not your post!"
             self.render("page-message.html", message=message)
             return
-        key = ndb.Key('Post', int(post_id), parent=posts_key())
-        post = key.get()
         post.subject = self.request.get('subject')
         post.content = self.request.get('content')
         if post.subject and post.content:

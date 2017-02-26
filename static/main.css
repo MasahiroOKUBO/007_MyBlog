@@ -96,12 +96,13 @@ input[type=submit] {
     right: 0px;
     bottom: 0px;
     color: #999;
-
 }
 
 .post-content {
     margin-top: 5px;
 }
 
-.label {text-align: right}
-.error {color: red}
+.error-message{
+    text-align: right;
+    color: red;
+}

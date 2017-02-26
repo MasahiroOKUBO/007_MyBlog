@@ -3,11 +3,6 @@ from handlers import BaseHandler
 from models import User
 
 
-'''
-#  -----------------------
-#  sanity check
-#  -----------------------
-# '''
 USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
 PASS_RE = re.compile(r"^.{3,20}$")
 EMAIL_RE = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
@@ -54,7 +49,7 @@ class Signup(BaseHandler):
             have_error = True
 
         if have_error:
-            self.render('signup-form.html', **params)
+            self.render('form-signup.html', **params)
             return
         else:
             self.done()

@@ -4,8 +4,8 @@ from models import posts_key, Comment
 
 class ShowPost(BaseHandler):
     def get(self, post_id):
-        key = ndb.Key('Post', int(post_id), parent=posts_key())
-        post = key.get()
+        post_key = ndb.Key('Post', int(post_id), parent=posts_key())
+        post = post_key.get()
         comments = Comment.query() \
             .filter(Comment.post_key == key) \
             .order(-Comment.created) \

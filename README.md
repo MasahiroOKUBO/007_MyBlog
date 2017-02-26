@@ -1,5 +1,5 @@
 # 007_MyBlog
-MyLoginBlog
+Basic Blog App. Written in python. Run on GAE.
 
 
 ## Require
@@ -7,7 +7,6 @@ Google Cloud SDK
 Python 2.7
 
 ## Git Clone
-Run Local
 ```
 git clone https://github.com/MasahiroOKUBO/007_MyBlog.git
 ```
