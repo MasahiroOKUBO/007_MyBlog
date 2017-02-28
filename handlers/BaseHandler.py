@@ -26,6 +26,15 @@ def check_secure_val(secure_val):
 
 
 class BaseHandler(webapp2.RequestHandler):
+    """
+    Class Name : BaseHandler
+        Parent Class of handlers.implement basic function.
+        render template, set secure cookie and initialize.
+    Args:
+        webapp2.RequestHandler:
+    Returns:
+
+    """
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
 

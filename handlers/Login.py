@@ -2,6 +2,7 @@ from handlers import BaseHandler
 from models import User
 
 class Login(BaseHandler):
+    """user can login"""
     def get(self):
         self.render('form-login.html')
         return

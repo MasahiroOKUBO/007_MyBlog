@@ -4,6 +4,7 @@ from google.appengine.ext import ndb
 
 
 class CastVeto(BaseHandler):
+    """User can veto on blog posts."""
     def post(self, post_id):
         if not self.user:
             self.redirect('/login')

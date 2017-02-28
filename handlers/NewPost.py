@@ -3,6 +3,7 @@ from models import Post, posts_key
 from google.appengine.ext import ndb
 
 class NewPost(BaseHandler):
+    """User can add new post."""
     def get(self):
         if self.user:
             self.render("form-new-post.html")
@@ -13,7 +14,8 @@ class NewPost(BaseHandler):
 
     def post(self):
         if not self.user:
-            self.redirect('/blog')
+            self.redirect('/login')
+            return
 
         subject = self.request.get('subject')
         content = self.request.get('content')

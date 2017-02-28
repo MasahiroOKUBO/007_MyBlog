@@ -4,6 +4,7 @@ from google.appengine.ext import ndb
 
 
 class CastVote(BaseHandler):
+    """User can vote on blog posts."""
     def post(self, post_id):
         if not self.user:
             self.redirect('/login')
@@ -13,7 +14,7 @@ class CastVote(BaseHandler):
         voter_key = self.user.key
 
         if post.author_key == voter_key:
-            message = "Can not veto yourselft!"
+            message = "Can not veto yourself!"
             self.redirect('/blog')
             return
 
@@ -31,6 +32,6 @@ class CastVote(BaseHandler):
             vote = Vote(parent=votes_key(), voter_key=voter_key, post_key=post.key)
             vote.put()
             message = "Vote Succeeded!"
-            self.redirect('/blog')
+            self.redirect('/blog)
             return
 

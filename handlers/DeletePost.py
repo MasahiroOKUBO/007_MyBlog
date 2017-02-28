@@ -4,6 +4,7 @@ from google.appengine.ext import ndb
 
 
 class DeletePost(BaseHandler):
+    """Login user can delete blog posts only which user post."""
     def get(self, post_id):
         if not self.user:
             self.redirect('/login')

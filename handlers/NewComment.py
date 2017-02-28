@@ -4,6 +4,7 @@ from google.appengine.ext import ndb
 
 
 class NewComment(BaseHandler):
+    """User can add new comment on post."""
     def get(self, post_id):
         if not self.user:
             self.redirect("/login?redirectUrl=/blog/%s/comment/new" % post_id)

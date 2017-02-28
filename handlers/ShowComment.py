@@ -4,6 +4,7 @@ from google.appengine.ext import ndb
 
 
 class ShowComment(BaseHandler):
+    """show one comment page."""
     def get(self, post_id, comment_id):
         comment_key = ndb.Key('Comment', int(comment_id), parent=comments_key())
         comment = comment_key.get()

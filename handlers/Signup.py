@@ -21,6 +21,7 @@ def valid_email(email):
 
 
 class Signup(BaseHandler):
+    """User can signup."""
     def get(self):
         self.render("form-signup.html")
         return

@@ -3,6 +3,7 @@ from google.appengine.ext import ndb
 from models import posts_key, Comment
 
 class ShowPost(BaseHandler):
+    """show one post page."""
     def get(self, post_id):
         post_key = ndb.Key('Post', int(post_id), parent=posts_key())
         post = post_key.get()

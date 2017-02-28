@@ -4,6 +4,7 @@ from google.appengine.ext import ndb
 
 
 class EditComment(BaseHandler):
+    """Login user can edit blog comments only which user posts."""
     def get(self, post_id, comment_id):
         if not self.user:
             self.redirect('/login')
