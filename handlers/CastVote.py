@@ -32,6 +32,6 @@ class CastVote(BaseHandler):
             vote = Vote(parent=votes_key(), voter_key=voter_key, post_key=post.key)
             vote.put()
             message = "Vote Succeeded!"
-            self.redirect('/blog)
+            self.redirect('/blog')
             return
 
